@@ -1,4 +1,5 @@
 *.py text eol=lf
 *.json text eol=lf
 *.csv text eol=lf
+/strategy_parameters.json -text
 gradlew text eol=lf
