@@ -6,7 +6,23 @@
 - 첫 배포: `Publish Woogongisan` Actions. `main` 코드 변경 시 테스트 후 정적 화면을 게시한다.
 - 종가 갱신: `Woogong close calculation` Actions. NYSE 일정·완료 종가를 확인해 새 결과를 계산하고 게시한다.
 
-## 시세 API 키
+## 메리츠 연결 확인
+
+2026-10-26 개인 PC에서 숨김 입력으로 인증하고, QQQ·TQQQ·BRK.B·GLD·SOXL·BITO의
+2026-10-23 일봉 조회를 확인했다. 계좌 조회·주문은 실행하지 않았다. 키는 파일과 GitHub에 저장하지 않았다.
+
+메리츠 수정주가와 기존 모델 자료의 겹치는 123거래일을 비교했을 때 SOXL·BITO에서
+일간 수익률 차이가 확인됐다. 원인과 분배금·분할 조정 기준을 검증하기 전에는 이 자료를
+기존 모델의 총수익 가격으로 대체하지 않는다. 현재 Pages는 2026-10-20 과거 미리보기이며
+메리츠 자동 갱신은 아직 활성화하지 않았다. 인증 성공은 모델 운용 검증과 별개다.
+
+다시 확인하려면 로컬에서 `./check_meritz.ps1`을 실행하고 App Key와 App Secret을 숨김 입력한다.
+결과는 업로드에서 제외되는 `runtime/meritz-market-check.json`에 저장된다.
+조회 도구는 해외 일봉 경로만 사용하며 계좌·주문 API는 호출하지 않는다.
+현재 도구는 키를 유지하지 않으므로 상시 실행 서버의 비밀정보 설정은 별도다.
+메리츠 계좌 키를 공개 소스·앱·Pages·GitHub Secrets에 넣지 않는다.
+
+## 선택 사항: 기존 Tiingo 파이프라인
 
 저장소 Settings → Secrets and variables → Actions → New repository secret에서
 이름 `TIINGO_TOKEN`, 값은 본인 Tiingo API 키로 등록한다. 키를 소스·채팅·앱 설정에 넣지 않는다.

@@ -4,7 +4,7 @@ Android 앱과 홈 화면 위젯, 웹 대시보드, 장 마감 계산 파이프�
 
 기존 3661 코어 → Cross5·GLD21 → QQQ SMA200 약세 시 방어 몫 25% 달러 현금 순서로 적용합니다. 강제 BRK.B 상태에도 D25를 적용하고, 재조정 문턱은 12.5%p입니다. 목표 비중·적용 이유·상대강도/방어/낙폭 차트·모델별 과거 성과·개인 보유량 비교를 표시합니다.
 
-현재 내장 자료는 **2026-10-20 기준 과거 미리보기**입니다. 실시간 데이터·GitHub Pages·Firebase는 아직 연결하지 않았습니다. 연구의 본운용 미승인 상태를 유지합니다. 개인 서버의 메리츠 연결·반자동 주문 기능은 별도 설정이 필요하며 기본은 관찰 모드입니다. 개발용 APK의 빌드 성공과 실제 휴대폰의 푸시·위젯 동작 검증은 별개입니다.
+현재 내장 자료는 **2026-10-20 기준 과거 미리보기**입니다. [GitHub Pages](https://eastgenie0909-cell.github.io/woogongisan/) 배포와 소스 저장소 연결을 확인했습니다. 메리츠 인증·6종목 최신 일봉 조회는 확인했지만, 기존 모델과 가격 조정 기준 차이를 검증 중이므로 실시간 모델 계산은 아직 연결하지 않았습니다. Firebase도 미설정입니다. 연구의 본운용 미승인 상태를 유지합니다. 개인 서버의 계좌 연결·반자동 주문 기능은 별도 설정이 필요하며 기본은 관찰 모드입니다. 개발용 APK의 빌드 성공과 실제 휴대폰의 푸시·위젯 동작 검증은 별개입니다.
 
 ## 현재 표시 범위
 
@@ -51,7 +51,7 @@ Windows에서는 JDK17·Android SDK36을 준비하고 `JAVA_HOME`·`ANDROID_HOME
 
 이 폴더만 별도 GitHub 저장소 루트로 올리고 Pages Source를 GitHub Actions로 설정합니다. `.deps`, `.tools`, 개인 키, 실제 보유량은 올리지 않습니다. 공개 Pages에는 파생 신호와 성과가 공개되므로 가격자료의 외부 배포 권한을 확인해야 합니다.
 
-Repository Secrets에 `TIINGO_TOKEN`을 등록합니다. 푸시를 쓰려면 Firebase Android 앱 `com.woogong.app`을 만들고 `GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FCM_TOKENS`를 등록합니다. 마지막 값은 앱 설정에서 복사한 기기 토큰의 JSON 배열입니다. 비밀키는 앱에 넣지 않습니다.
+시세 연결 상태와 공급자별 설정은 [GitHub 연결 안내](GITHUB_SETUP.md)를 확인하세요. 현재 자동 계산 파이프라인은 Tiingo용이며 메리츠 조회 검증 도구는 별도입니다. 메리츠 키를 GitHub Secrets에 등록하는 절차가 아닙니다. 푸시를 쓰려면 Firebase Android 앱 `com.woogong.app`을 만들고 `GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FCM_TOKENS`를 등록합니다. 마지막 값은 앱 설정에서 복사한 기기 토큰의 JSON 배열입니다. 비밀키는 앱에 넣지 않습니다.
 
 앱 설정에서 Pages의 HTTPS 주소를 저장합니다. 알림 권한을 허용하고 홈 화면에 우공이산 위젯을 추가합니다. **Woogong close calculation** Actions는 미국 휴장·조기폐장·서머타임과 완료된 BTC UTC 일봉을 반영합니다. 계산 결과가 게시된 뒤 푸시를 보냅니다. 예약 실행·데이터 제공·폰 절전으로 지연될 수 있습니다.
 
