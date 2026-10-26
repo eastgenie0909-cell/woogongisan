@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>우공이산 · 운용 센터</title><link rel="stylesheet" href="style.css?v=0.5.1"></head>
+<body><main style="max-width:1080px;margin:auto;padding:32px 22px 70px">
+<a href="./" class="brand" style="font-size:26px;text-decoration:none">우공이산<span class="brand-dot">.</span></a>
+<div class="page-heading" style="margin-top:38px"><div><div class="eyebrow">EXECUTION CENTER</div><h1>계획에서 실행까지.</h1><p>계좌와 원칙을 연결하고, 모든 주문의 과정을 기록합니다.</p></div><button id="pause" class="button">신규 주문 중지</button></div>
+<div id="message" class="notice" role="status">개인 서버에 연결하거나 예시를 확인하세요.</div>
+<section class="card" style="margin-bottom:20px"><div class="card-head"><h2>메리츠 연결</h2><span class="badge" id="connection">연결 전</span></div>
+<details id="connection-settings" open><summary>연결 설정</summary><p class="caption">메리츠 인증키는 개인 서버에서 보관합니다. 이 화면에는 서버 연결 토큰만 입력하세요. 토큰은 페이지를 닫으면 지워집니다.</p>
+<form id="connect" class="field-row"><label>개인 서버 주소<input id="server" placeholder="https://나의-개인서버"></label><label>서버 연결 토큰<input id="token" type="password" autocomplete="off" placeholder="32자 이상의 연결 토큰"></label><button class="button primary" style="align-self:center;margin-top:16px">연결</button></form>
+<button class="text-button" id="preview">실제 계좌와 분리된 예시 체험 →</button></details></section>
+<details id="mode-settings"><summary id="mode-summary">운용 모드 설정</summary><div class="settings-grid" id="modes"></div></details><div id="dashboard" style="margin-top:20px"></div>
+<dialog id="approval"><div class="dialog-head"><h2>주문안 최종 확인</h2><button class="icon-button" id="close-approval" aria-label="닫기">×</button></div><div id="approval-body"></div><button class="button primary full" id="send">확인한 주문안 실행</button></dialog>
+<dialog id="resolve"><div class="dialog-head"><h2>미확인 주문 대조</h2><button class="icon-button" id="close-resolve" aria-label="닫기">×</button></div><p class="caption">메리츠 앱에서 확인한 주문번호·주문일자를 입력하세요. 종목·방향·수량·가격이 일치할 때만 연결합니다. 주문이 보이지 않아도 미접수로 추정해 재전송하지 않습니다.</p><form id="resolve-form"><label>주문번호<input name="broker_id" required inputmode="numeric"></label><label>주문일자<input name="broker_date" required type="date"></label><button class="button primary full">증권사 내역과 대조</button></form></dialog>
+<footer>운용 모드와 연결 환경을 확인하세요. 중지는 신규 전송을 막으며 이미 접수된 주문을 취소하지 않습니다.</footer>
+</main><script type="module" src="trading.mjs?v=0.5.1"></script></body></html>
+
+

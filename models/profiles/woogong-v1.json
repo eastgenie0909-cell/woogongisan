@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "model_id": "woogong-v1",
+  "version": "우공 v1",
+  "strategy_id": 3661,
+  "adapter": "frozen_core_v1",
+  "parent": "frozen_3661",
+  "rebalance_band": 0.125,
+  "approval": "과거 동결 모델 · 실계좌 본운용 미승인",
+  "research_note": "실제 BITO 기본 6조건에서 목표 CAGR/MDD 2에 미달했습니다.",
+  "live_approved": false,
+  "orders_enabled": false
+}

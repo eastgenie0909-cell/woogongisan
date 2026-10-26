@@ -1,0 +1,14 @@
+.deps/
+.tools/
+__pycache__/
+.pytest_cache/
+runtime/
+*.jks
+*.keystore
+*.env
+google-services.json
+local.properties
+.gradle/
+build/
+.test-tmp*/
+release/

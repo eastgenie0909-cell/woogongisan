@@ -1,0 +1,69 @@
+name: Woogong close calculation
+on:
+  workflow_dispatch:
+  schedule:
+    # DST/standard/early close all handled by the NYSE calendar in Python.
+    # Include early-close windows; GitHub scheduling may be delayed.
+    - cron: '7,22,37,52 17-23 * * 1-5'
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: woogong-pages
+  cancel-in-progress: false
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    env:
+      TIINGO_TOKEN: ${{ secrets.TIINGO_TOKEN }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - uses: actions/cache/restore@v4
+        with:
+          path: runtime
+          key: deliveries-${{ github.run_id }}
+          restore-keys: deliveries-
+      - run: python -m pytest tests -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/portfolio_web.mjs
+      - name: Calculate complete close only
+        if: env.TIINGO_TOKEN != ''
+        run: python pipeline.py --live
+      - name: Keep last published state until the data key is configured
+        if: env.TIINGO_TOKEN == ''
+        run: echo 'TIINGO_TOKEN is not configured. Existing demo/stale labels are preserved.'
+      - name: Save derived results
+        run: |
+          git config user.name woogong-data
+          git config user.email woogong-data@users.noreply.github.com
+          git add site/*.json
+          git diff --cached --quiet || git commit -m "Update Woogong derived close snapshot"
+          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        id: deployment
+      - name: Send to configured personal devices after deployment
+        if: env.TIINGO_TOKEN != ''
+        run: python notify.py
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FCM_TOKENS: ${{ secrets.FCM_TOKENS }}
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: runtime
+          key: deliveries-${{ github.run_id }}-${{ github.run_attempt }}

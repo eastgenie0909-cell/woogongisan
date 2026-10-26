@@ -1,0 +1,54 @@
+package com.woogong.app
+
+import android.content.Context
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.time.Instant
+
+object Data {
+ fun prefs(c:Context)=c.getSharedPreferences("woogong",Context.MODE_PRIVATE)
+ fun load(c:Context,name:String):JSONObject {
+  val cached=prefs(c).getString(name,null)
+  return JSONObject(cached?:c.assets.open("$name.json").bufferedReader().use{it.readText()})
+ }
+ fun url(c:Context)=prefs(c).getString("url",BuildConfig.SIGNAL_BASE_URL)!!.trimEnd('/')
+ private fun identity(a:JSONObject)=ModelIdentity(a.optInt("schema_version"),a.optString("model_id"),a.optString("model_fingerprint"))
+ fun sameModel(a:JSONObject,b:JSONObject):Boolean = identity(a).matches(identity(b))
+ fun stale(s:JSONObject,status:JSONObject):Boolean = try {
+  !sameModel(s,status) || s.optString("market_date")!=status.optString("market_date") || s.optString("mode")!="live" || status.optString("state")!="ready" || Instant.now().isAfter(Instant.parse(s.getString("valid_until")))
+ } catch(e:Exception){true}
+ fun sync(c:Context) {
+  val base=url(c);require(base.startsWith("https://")){"HTTPS 주소를 입력하세요"}
+  fun get(name:String):String {
+   val connection=URL("$base/$name.json").openConnection() as HttpURLConnection
+   try {
+    connection.connectTimeout=15000;connection.readTimeout=20000;connection.useCaches=false
+    require(connection.responseCode==200){"연결 오류 ${connection.responseCode}"}
+    return connection.inputStream.bufferedReader().use{it.readText()}
+   } finally {connection.disconnect()}
+  }
+  // Parse and validate the complete pair before atomically replacing cache.
+  val state=get("status");val snap=get("snapshot");val obj=JSONObject(snap)
+  val manifest=JSONObject(get("model"));val health=JSONObject(state)
+  require(sameModel(obj,manifest) && sameModel(obj,health)){"모델 버전이 섞여 있습니다. 다시 갱신하세요"}
+  require(obj.getDouble("rebalance_band")>0 && obj.getDouble("rebalance_band")<=1)
+  val weights=obj.getJSONObject("target");var sum=0.0
+  require(weights.keys().asSequence().toSet()==setOf("TQQQ","SOXL","BITO","BRK.B","GLD","CASH")){"지원하지 않는 자산 구성입니다"}
+  weights.keys().forEach{val w=weights.getDouble(it);require(w.isFinite()&&w>=-1e-10);sum+=w}
+  require(kotlin.math.abs(sum-1)<1e-8);JSONObject(state)
+  if(health.optString("state")=="ready")require(obj.getString("market_date")==health.getString("market_date"))
+  val edit=prefs(c).edit().putString("snapshot",snap).putString("status",state).putString("sync_error","")
+  for(name in listOf("backtest","extended_backtest")){
+   edit.remove(name)
+   try{val back=get(name);if(sameModel(obj,JSONObject(back)))edit.putString(name,back)}catch(_:Exception){}
+  }
+  edit.apply()
+  try{PortfolioStore.recordDaily(c,obj,health);prefs(c).edit().remove("portfolio_error").apply()}
+  catch(_:Exception){prefs(c).edit().putString("portfolio_error","자산 기록을 저장하지 못했습니다. 내 자산에서 잔고를 확인하세요.").apply()}
+ }
+ fun allocation(s:JSONObject):String {
+  val w=s.getJSONObject("target")
+  return w.keys().asSequence().filter{w.optDouble(it)>0.0001}.joinToString(" · "){"$it ${"%.1f".format(w.optDouble(it)*100)}%"}
+ }
+}

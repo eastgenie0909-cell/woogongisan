@@ -1,0 +1,12 @@
+{
+  "allow_live": false,
+  "allow_auto": false,
+  "execution_reviewed": false,
+  "approved_model_fingerprint": "",
+  "execution": "regular_limit",
+  "max_order_usd": 500,
+  "max_daily_usd": 1000,
+  "reserve_usd": 100,
+  "fee_rate": 0.001,
+  "price_buffer": 0.001
+}
