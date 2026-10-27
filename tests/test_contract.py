@@ -34,11 +34,13 @@ def test_snapshot_labels_and_finite():
  assert abs(sum(data['target'].values())-1)<1e-12
  assert data['valid_until'].startswith('2026-10-21')
  json.dumps(data,allow_nan=False)
-def test_no_live_without_key(monkeypatch):
+def test_live_fetch_uses_public_feed_without_private_keys(monkeypatch):
  from pipeline import fetch
- import pytest
+ import market_data
  monkeypatch.delenv('TIINGO_TOKEN',raising=False)
- with pytest.raises(RuntimeError):fetch(pd.Timestamp('2026-10-20'))
+ expected=pd.Timestamp('2026-10-26');sentinel=object()
+ monkeypatch.setattr(market_data,'fetch',lambda date,root:sentinel if date==expected else None)
+ assert fetch(expected) is sentinel
 def test_frozen_backtest_is_not_synthetic():
  b=json.loads((ROOT/'site/backtest.json').read_text(encoding='utf-8'))
  assert b['kind']=='observed_BITO_backtest' and b['cagr']<.6

@@ -60,7 +60,7 @@ function render(){
  $('eyebrow').textContent=copy[0];$('page-title').textContent=copy[1];$('page-subtitle').textContent=copy[2];$('breadcrumb').textContent=tabs.find(t=>t[0]===tab)[1];
  $('header-action').dataset.action=tab==='assets'?'edit':'refresh';$('header-action').textContent=tab==='assets'?'+ 잔고 맞추기':'최신 결과 확인 ↻';
  $('notice').className='notice'+(demo?' demo':'');
- $('notice').innerHTML=demo?'디자인 미리보기 · 예시 자산입니다. 실제 메리츠 잔고와 무관하며 저장되지 않습니다.<button data-action="exit-demo">내 계좌로 돌아가기</button>':data&&!fresh()?`과거 모델 자료 · ${esc(data.market_date)} 기준. 시세·신호 서버를 연결하면 자동 갱신됩니다.`:data?`확정 종가 확인 · ${esc(data.market_date)} 미국 거래일`:'모델 결과 파일 연결을 확인하고 있습니다.';
+ $('notice').innerHTML=demo?'디자인 미리보기 · 예시 자산입니다. 실제 메리츠 잔고와 무관하며 저장되지 않습니다.<button data-action="exit-demo">내 계좌로 돌아가기</button>':data&&!fresh()?`과거 모델 자료 · ${esc(data.market_date)} 기준. 시세·신호 서버를 연결하면 자동 갱신됩니다.`:data?`확정 종가 확인 · ${esc(data.market_date)} 미국 거래일 · 시세 Yahoo Finance / BTC Bitstamp`:'모델 결과 파일 연결을 확인하고 있습니다.';
  $('content').innerHTML=({today:todayContent,assets:assetContent,why:whyContent,backtest:backtestContent,settings:settingsContent}[tab])();
  if(['today','assets'].includes(tab))$('content').insertAdjacentHTML('afterbegin',timingCard(timingPayload(),fresh(),data?.market_date));
 }

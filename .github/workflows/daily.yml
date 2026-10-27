@@ -15,8 +15,6 @@ concurrency:
 jobs:
   daily:
     runs-on: ubuntu-latest
-    env:
-      TIINGO_TOKEN: ${{ secrets.TIINGO_TOKEN }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -38,11 +36,12 @@ jobs:
           node-version: '22'
       - run: node tests/portfolio_web.mjs
       - name: Calculate complete close only
-        if: env.TIINGO_TOKEN != ''
-        run: python pipeline.py --live
-      - name: Keep last published state until the data key is configured
-        if: env.TIINGO_TOKEN == ''
-        run: echo 'TIINGO_TOKEN is not configured. Existing demo/stale labels are preserved.'
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            python pipeline.py --live --force-refresh
+          else
+            python pipeline.py --live
+          fi
       - name: Save derived results
         run: |
           git config user.name woogong-data
@@ -57,7 +56,6 @@ jobs:
       - uses: actions/deploy-pages@v4
         id: deployment
       - name: Send to configured personal devices after deployment
-        if: env.TIINGO_TOKEN != ''
         run: python notify.py
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
@@ -67,3 +65,5 @@ jobs:
         with:
           path: runtime
           key: deliveries-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Verify published calculation state
+        run: python -c "import json; s=json.load(open('site/status.json')); assert s['state']=='ready', 'Market calculation is unavailable; published stale/error labels are preserved'"

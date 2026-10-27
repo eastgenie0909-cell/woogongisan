@@ -15,36 +15,8 @@ def session(now):
  done=schedule[schedule.market_close<=pd.Timestamp(now)-pd.Timedelta(minutes=5)]
  return None if done.empty else (done.index[-1],done.market_close.iloc[-1])
 def fetch(expected):
- token=os.environ.get('TIINGO_TOKEN','')
- if not token:raise RuntimeError('TIINGO_TOKEN 미설정: 실시간 신호를 생성하지 않습니다')
- p=pd.read_csv(ROOT/'data/equities.csv',index_col=0,parse_dates=True);raw={}
- with httpx.Client(timeout=60,headers={'Authorization':'Token '+token}) as client:
-  for symbol,provider in [('QQQ','qqq'),('TQQQ','tqqq'),('BRK.B','brk-b'),('GLD','gld'),('SOXL','soxl'),('BITO','bito')]:
-   response=client.get(f'https://api.tiingo.com/tiingo/daily/{provider}/prices',params={'startDate':'1999-01-01','endDate':str(expected.date())});response.raise_for_status();rows=response.json()
-   s=pd.Series({pd.Timestamp(x['date']).tz_localize(None).normalize():float(x['adjClose']) for x in rows})
-   if expected not in s.index:raise ValueError(f'{symbol}: {expected.date()} 종가 미도착')
-   old=p[symbol].dropna() if symbol in p else pd.Series(dtype=float);overlap=old.index.intersection(s.index)
-   # Preserve return history and bring the old warmup prefix onto the new scale.
-   if len(overlap):old=old*(s.loc[overlap[0]]/old.loc[overlap[0]])
-   combined=pd.concat([old,s]);combined=combined[~combined.index.duplicated(keep='last')].sort_index();p=p.reindex(p.index.union(s.index));p[symbol]=combined
-   raw[symbol]=float(rows[-1]['close'])
-  btc=pd.read_csv(ROOT/'data/btc.csv',parse_dates=['date_utc']).set_index('date_utc').close.sort_index()
-  start=btc.index.max()-pd.Timedelta(days=3)
-  while start<expected:
-   end=min(start+pd.Timedelta(days=900),expected)
-   response=client.get('https://www.bitstamp.net/api/v2/ohlc/btcusd/',params={'step':86400,'limit':1000,'start':int(start.tz_localize('UTC').timestamp()),'end':int(end.tz_localize('UTC').timestamp())});response.raise_for_status()
-   for row in response.json()['data']['ohlc']:
-    d=pd.Timestamp(int(row['timestamp']),unit='s',tz='UTC').tz_localize(None).normalize()
-    if d<expected:btc.loc[d]=float(row['close'])
-   start=end
- p=p.loc[:expected].sort_index();required=['QQQ','TQQQ','BRK.B','GLD','SOXL','BITO']
- if p.loc[expected,required].isna().any() or (p.loc[expected,required]<=0).any():raise ValueError('종가 누락 또는 비정상 가격')
- # Any missing equity session or crypto calendar day affects rolling windows.
- sessions=calendars.get_calendar('NYSE').schedule(start_date='2021-10-20',end_date=expected.date()).index
- if p.reindex(sessions)[required].isna().any().any():raise ValueError('종목별 거래일 누락: 임의 보간하지 않습니다')
- days=pd.date_range('2021-01-01',expected-pd.Timedelta(days=1));btc=btc.sort_index()
- if btc.reindex(days).isna().any():raise ValueError('BTC 달력 일봉 누락')
- return p,btc,raw
+ from market_data import fetch as public_fetch
+ return public_fetch(expected,ROOT)
 def latest_backtest(p,targets,model=None):
  model=model or load_model()
  ix=p.loc['2021-10-20':].index;prices=p.reindex(ix)[['TQQQ','BRK.B','GLD','SOXL','BITO']]
@@ -62,7 +34,7 @@ def latest_backtest(p,targets,model=None):
    value*=(lo+hi)/2;held=goal.copy();trades+=1
   goal=tar[i];request=np.max(abs(goal-held))>=model.band;nav.append(value)
  v=np.array(nav);dd=v/np.maximum.accumulate(v)-1;cg=v[-1]**(365.25/(ix[-1]-ix[0]).days)-1
- return {**model.metadata(),'data_end':str(ix[-1].date()),'kind':'extended_EOD_total_return_model','label':'최신 확장 · 다음 종가 · 편도0.1% · 현금금리0 · 세전 · 분배금 재투자 비용 별도 미반영','cagr':cg,'mdd':float(dd.min()),'calmar':cg/-dd.min(),'trades':trades,'curve':[{'date':str(ix[i].date()),'nav':float(v[i]),'drawdown':float(dd[i])} for i in list(range(0,len(ix)-1,5))+[len(ix)-1]]}
+ return {**model.metadata(),'data_end':str(ix[-1].date()),'kind':'extended_EOD_audited_price_basis','label':'최신 확장 · 원본 혼합 가격기준 · 다음 종가 · 편도0.1% · 현금금리0 · 세전','cagr':cg,'mdd':float(dd.min()),'calmar':cg/-dd.min(),'trades':trades,'curve':[{'date':str(ix[i].date()),'nav':float(v[i]),'drawdown':float(dd[i])} for i in list(range(0,len(ix)-1,5))+[len(ix)-1]]}
 def snapshot(p,btc,mode,raw=None,model=None):
  model=model or load_model()
  t,ind=evaluate(p,btc,model);last=ind.iloc[-1];day=t.index[-1];target=t.iloc[-1].to_dict();state=int(last.state)
@@ -104,7 +76,7 @@ def push(data):
   except Exception:pass
  return {'configured':True,'sent':sent,'failed':len(tokens)-sent}
 def main():
- parser=argparse.ArgumentParser();parser.add_argument('--live',action='store_true');parser.add_argument('--demo',action='store_true');args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument('--live',action='store_true');parser.add_argument('--demo',action='store_true');parser.add_argument('--force-refresh',action='store_true');args=parser.parse_args()
  if not args.live and not args.demo:parser.error('choose --live or --demo')
  SITE.mkdir(exist_ok=True);now=datetime.now(timezone.utc);model=load_model()
  if args.demo:
@@ -115,16 +87,21 @@ def main():
  expected,close=found
  existing=json.loads((SITE/'snapshot.json').read_text(encoding='utf-8')) if (SITE/'snapshot.json').exists() else {}
  health=json.loads((SITE/'status.json').read_text(encoding='utf-8')) if (SITE/'status.json').exists() else {}
- if existing.get('market_date')==str(expected.date()) and existing.get('mode')=='live' and existing.get('model_fingerprint')==model.fingerprint and health.get('state')=='ready' and health.get('model_fingerprint')==model.fingerprint:return
+ if not args.force_refresh and existing.get('data_contract_id')=='audited-mixed-close-v1' and existing.get('market_date')==str(expected.date()) and existing.get('mode')=='live' and existing.get('model_fingerprint')==model.fingerprint and health.get('state')=='ready' and health.get('model_fingerprint')==model.fingerprint:return
  try:
   p,btc,raw=fetch(expected);data,t=snapshot(p,btc,'live',raw,model)
+  data.update(data_contract_id='audited-mixed-close-v1',data_sources={'equities':'Yahoo Finance','btc':'Bitstamp'},price_basis={'QQQ':'close','TQQQ':'close','BRK.B':'close','GLD':'close','SOXL':'adjclose','BITO':'adjclose'})
   if data['market_date']!=str(expected.date()):raise ValueError('계산 기준일 불일치')
+  proof=ROOT/'runtime/market-data-validation.json'
+  if proof.exists():
+   validation=json.loads(proof.read_text(encoding='utf-8'))
+   if validation.get('expected_date')==data['market_date']:write(SITE/'data-validation.json',validation)
   evidence=ROOT/'models/evidence'/f'{model.id}.backtest.json'
   if evidence.exists():
    archived=json.loads(evidence.read_text(encoding='utf-8'))
    if archived.get('model_fingerprint')==model.fingerprint:write(SITE/'backtest.json',archived)
   write(SITE/'extended_backtest.json',latest_backtest(p,t,model));write(SITE/'snapshot.json',data);write(SITE/'model.json',model.metadata())
-  write(SITE/'status.json',{**model.metadata(),'state':'ready','market_date':data['market_date'],'message':'확정 종가 검증 완료','updated_at':now.isoformat()})
+  write(SITE/'status.json',{**model.metadata(),'state':'ready','market_date':data['market_date'],'message':'원본 가격기준 대조 · 확정 종가 계산 완료','data_contract_id':'audited-mixed-close-v1','data_sources':data['data_sources'],'updated_at':now.isoformat()})
  except Exception as exc:
   # Preserve the last valid snapshot and visibly mark it unavailable/stale.
   write(SITE/'status.json',{**model.metadata(),'state':'error','expected_date':str(expected.date()),'message':'종가 자료 확인 중. 이전 목표를 새 신호로 사용하지 마세요.','error_type':type(exc).__name__,'updated_at':now.isoformat()})
