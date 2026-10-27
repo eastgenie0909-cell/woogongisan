@@ -41,6 +41,15 @@ def test_live_fetch_uses_public_feed_without_private_keys(monkeypatch):
  expected=pd.Timestamp('2026-10-26');sentinel=object()
  monkeypatch.setattr(market_data,'fetch',lambda date,root:sentinel if date==expected else None)
  assert fetch(expected) is sentinel
+def test_optional_push_empty_github_secrets_are_unconfigured(tmp_path,monkeypatch,capsys):
+ import notify
+ meta=load_model().metadata()
+ (tmp_path/'status.json').write_text(json.dumps({**meta,'state':'ready','market_date':'2026-10-26'}))
+ (tmp_path/'snapshot.json').write_text(json.dumps({**meta,'market_date':'2026-10-26'}))
+ monkeypatch.setattr(notify,'SITE',tmp_path)
+ monkeypatch.setenv('FCM_TOKENS','');monkeypatch.setenv('FIREBASE_SERVICE_ACCOUNT_JSON','')
+ notify.main()
+ assert 'not configured' in capsys.readouterr().out
 def test_frozen_backtest_is_not_synthetic():
  b=json.loads((ROOT/'site/backtest.json').read_text(encoding='utf-8'))
  assert b['kind']=='observed_BITO_backtest' and b['cagr']<.6

@@ -9,7 +9,7 @@ def main():
  failure=status.get('state')=='error'
  if failure:data={'version':status.get('version','우공')+' 오류','market_date':status.get('expected_date','확인 필요'),'state_label':'종가 자료 확인 중 · 새 신호를 사용하지 마세요','model_fingerprint':status.get('model_fingerprint','')}
  if not failure and (data.get('model_fingerprint')!=status.get('model_fingerprint') or data.get('market_date')!=status.get('market_date')):raise ValueError('게시 결과 모델 불일치')
- tokens=json.loads(os.environ.get('FCM_TOKENS','[]'));raw=os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
+ tokens=json.loads(os.environ.get('FCM_TOKENS') or '[]');raw=os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
  if not tokens or not raw:print('push: not configured');return
  import firebase_admin
  from firebase_admin import credentials,messaging

@@ -61,7 +61,7 @@ def snapshot(p,btc,mode,raw=None,model=None):
  data['loan_timing']=timing(state,int(ind.iloc[-2].state) if len(ind)>1 else None,model.fingerprint)
  return data,t
 def push(data):
- tokens=json.loads(os.environ.get('FCM_TOKENS','[]'));credentials_json=os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
+ tokens=json.loads(os.environ.get('FCM_TOKENS') or '[]');credentials_json=os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
  if not tokens or not credentials_json:return {'configured':False,'sent':0,'failed':len(tokens)}
  import firebase_admin
  from firebase_admin import credentials,messaging
