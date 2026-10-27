@@ -17,6 +17,14 @@ import org.json.JSONObject
 object ReturnsSummary {
  fun percent(total:Double,capital:Double):Double?=if(total.isFinite()&&total>=0&&capital.isFinite()&&capital>0)((total/capital-1)*100).takeIf{it.isFinite()} else null
  fun read(c:Context):Pair<String,String> {
+  if(MeritzAccount.connected(c))return try{
+   val a=MeritzAccount.cached(c)?.optJSONObject("account")?:return "—" to "메리츠 계좌 조회 대기"
+   val positions=a.getJSONArray("positions");var cost=0.0;var profit=0.0
+   for(i in 0 until positions.length()){val p=positions.getJSONObject(i);cost+=p.getDouble("cost_krw");profit+=p.getDouble("profit_krw")}
+   val percentage=if(cost>0)100*profit/cost else null
+   val old=MeritzAccount.failed(c)||WidgetSummary.expired(java.time.Instant.parse(a.getString("as_of")),java.time.Instant.now())
+   (percentage?.takeIf{it.isFinite()}?.let{"%+.2f%%".format(it)}?:"—") to "보유 종목 평가 · ${a.getString("as_of")}${if(old)" · 갱신 필요" else ""}"
+  }catch(_:Exception){"—" to "메리츠 계좌 갱신 필요"}
   if(TradingConnection.url(c).isNotBlank())return "—" to "연결 계좌 · 순투입금 확인 필요"
   return try{
    val a=PortfolioStore.read(c).account?:return "—" to "내 자산에서 원금·잔고 등록"
@@ -33,7 +41,7 @@ object ReturnsSummary {
  Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(26.dp),colors=CardDefaults.cardColors(containerColor=Color(0xff142333),contentColor=Color.White)){
   Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
    Text("나의 수익률",fontSize=18.sp,fontWeight=FontWeight.Bold)
-   Text("총 수익률 · 순투입금 대비",fontSize=12.sp,color=light)
+   Text(if(MeritzAccount.connected(c))"보유 종목 평가수익률 · 실현손익·배당 제외" else "총 수익률 · 순투입금 대비",fontSize=12.sp,color=light)
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(summary.first,fontSize=38.sp,fontWeight=FontWeight.Bold,color=mint);Column{Text("이번 달",fontSize=11.sp,color=light);Text("—",fontSize=23.sp,color=mint)}}
    Text(summary.second,fontSize=10.sp,color=light)
    HorizontalDivider(color=Color(0xff304153))

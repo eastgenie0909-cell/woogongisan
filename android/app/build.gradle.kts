@@ -16,8 +16,8 @@ android {
         applicationId = "com.woogong.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.5.2"
+        versionCode = 10
+        versionName = "0.6.0"
         buildConfigField("String", "SIGNAL_BASE_URL", "\"https://eastgenie0909-cell.github.io/woogongisan\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -76,5 +76,6 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }
 

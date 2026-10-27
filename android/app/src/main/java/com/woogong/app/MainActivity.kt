@@ -53,7 +53,7 @@ class MainActivity:ComponentActivity(){
   fun refresh(){scope.launch{busy=true;error="";try{withContext(Dispatchers.IO){Data.sync(this@MainActivity)};snap=Data.load(this@MainActivity,"snapshot");status=Data.load(this@MainActivity,"status");back=Data.load(this@MainActivity,"backtest");WoogongWidget.updateAll(this@MainActivity)}catch(e:Exception){error=e.message?:"갱신 실패"}finally{busy=false}}}
   LaunchedEffect(Unit){if(Data.url(this@MainActivity).isNotBlank())refresh()}
   val clockTick by produceState(0L){while(true){delay(1000);value++}}
-  LaunchedEffect(resumeTick){snap=Data.load(this@MainActivity,"snapshot");status=Data.load(this@MainActivity,"status");back=Data.load(this@MainActivity,"backtest")}
+  LaunchedEffect(resumeTick){snap=Data.load(this@MainActivity,"snapshot");status=Data.load(this@MainActivity,"status");back=Data.load(this@MainActivity,"backtest");if(MeritzAccount.connected(this@MainActivity))try{withContext(Dispatchers.IO){MeritzAccount.sync(this@MainActivity)}}catch(_:Exception){}}
   val stale=remember(clockTick,snap,status,error){Data.stale(snap,status)||error.isNotEmpty()||Data.prefs(this@MainActivity).getString("sync_error","")!!.isNotEmpty()}
   val icons=listOf(Icons.Outlined.Home,Icons.Outlined.AccountBalanceWallet,Icons.Outlined.Lightbulb,Icons.Outlined.ShowChart,Icons.Outlined.Settings)
   Scaffold(containerColor=Color(0xfff5f6fa),topBar={Row(Modifier.fillMaxWidth().padding(24.dp,18.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Text("우공이산",fontSize=27.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1).sp);Text("나의 자산, 흔들리지 않는 기준",fontSize=11.sp,color=Color(0xff8991a5))};Surface(color=Color(0xffeceafb),shape=RoundedCornerShape(20.dp)){Text(snap.optString("version").removePrefix("우공 "),Modifier.padding(12.dp,7.dp),fontSize=11.sp,color=Mint,fontWeight=FontWeight.Bold)}}},bottomBar={NavigationBar(containerColor=Color.White,tonalElevation=0.dp){listOf("오늘","내 자산","이유","성과","설정").forEachIndexed{i,label->NavigationBarItem(selected=tab==i,onClick={tab=i},icon={Icon(icons[i],contentDescription=label)},label={Text(label,fontSize=11.sp)},colors=NavigationBarItemDefaults.colors(selectedIconColor=Mint,selectedTextColor=Mint,indicatorColor=Color(0xffeeebff),unselectedIconColor=Color(0xff9aa2b5),unselectedTextColor=Color(0xff9aa2b5)))}}}){padding->
@@ -63,16 +63,17 @@ class MainActivity:ComponentActivity(){
     when(tab){
      0->{
       ReturnsHome(snap,stale)
-      Panel{Text("메리츠증권 · 내 자산",fontWeight=FontWeight.Bold);Text("보유잔고와 순투입금, 하루의 변화를 한곳에서 확인하세요.",color=Color(0xff7b849a));TextButton(onClick={tab=1}){Text("내 자산 열기 →")}}
+      Panel{Text("메리츠증권 · 내 자산",fontWeight=FontWeight.Bold);Text("메리츠 API로 보유잔고·현금·평가액을 자동으로 가져옵니다.",color=Color(0xff7b849a));TextButton(onClick={tab=1}){Text("내 자산 열기 →")}}
       Button(onClick={refresh()},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text(if(busy)"확인 중…" else "최신 결과 확인")}
      }
      1->{
-      var operation by remember{mutableStateOf(TradingConnection.url(this@MainActivity).isNotBlank())}
+      var assetView by remember{mutableIntStateOf(0)}
       Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-       FilterChip(selected=!operation,onClick={operation=false},label={Text("내 자산")})
-       FilterChip(selected=operation,onClick={operation=true},label={Text("운용 센터")})
+       FilterChip(selected=assetView==0,onClick={assetView=0},label={Text("메리츠 계좌")})
+       FilterChip(selected=assetView==1,onClick={assetView=1},label={Text("수동 기록")})
+       FilterChip(selected=assetView==2,onClick={assetView=2},label={Text("운용 센터")})
       }
-      if(operation)TradingScreen() else PortfolioScreen(snap,status,resumeTick)
+      when(assetView){0->MeritzScreen();1->PortfolioScreen(snap,status,resumeTick);else->TradingScreen()}
      }
      2->{
       Text("왜 이 목표인가요?",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)
@@ -99,7 +100,7 @@ class MainActivity:ComponentActivity(){
      4->{
       Panel{Text("현재 모델",fontWeight=FontWeight.Bold);Text(snap.optString("version"));Text(snap.optString("approval"));Text("모델 변경은 서버 설정에서 반영되며, 보유량은 휴대폰에 유지됩니다.")}
       var base by remember{mutableStateOf(Data.url(this@MainActivity))}
-      Panel{Text("GitHub Pages 연결",fontWeight=FontWeight.Bold);OutlinedTextField(base,{base=it},label={Text("https://계정.github.io/저장소")},modifier=Modifier.fillMaxWidth(),singleLine=true);Button(onClick={Data.prefs(this@MainActivity).edit().putString("url",base.trim()).apply();refresh()}){Text("저장하고 연결")};Text("HTTPS 결과 주소만 입력합니다. GitHub 비밀번호나 데이터 API 키는 앱에 넣지 않습니다.")}
+      Panel{Text("모델 결과 연결",fontWeight=FontWeight.Bold);Text("메리츠 계좌는 내 자산 → 메리츠 계좌에서 연결합니다. 이 주소는 우공 모델의 계산 결과를 받는 곳입니다.",fontSize=12.sp);OutlinedTextField(base,{base=it},label={Text("모델 결과 HTTPS 주소")},modifier=Modifier.fillMaxWidth(),singleLine=true);Button(onClick={try{base=SignalEndpoint.normalize(base);Data.prefs(this@MainActivity).edit().putString("url",base).apply();refresh()}catch(e:Exception){error=e.message?:"주소를 확인하세요"}}){Text("저장하고 결과 확인")};TextButton(onClick={base=BuildConfig.SIGNAL_BASE_URL;Data.prefs(this@MainActivity).edit().putString("url",base).apply();refresh()}){Text("우공이산 기본 주소로 복구")};Text(if(Data.prefs(this@MainActivity).getString("sync_error","").isNullOrEmpty())"표시 자료: ${status.optString("market_date")} · ${if(status.optString("state")=="ready")"계산 완료" else "과거 미리보기 / 자동 계산 미연결"}" else "결과 서버 연결을 다시 확인하세요",fontSize=11.sp)}
       Panel{Text("장 마감 알림",fontWeight=FontWeight.Bold);Text("GitHub 계산 → 결과 게시 → Firebase 푸시 → 위젯 갱신. 예약 실행·통신·절전 설정에 따라 늦어질 수 있습니다.");Text(if(FirebaseApp.getApps(this@MainActivity).isEmpty())"Firebase 설정 파일이 아직 연결되지 않았습니다." else "Firebase 연결됨 · 휴대폰 알림 권한을 확인하세요.")
        Button(onClick={val token=Data.prefs(this@MainActivity).getString("fcm_token","")!!;(getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("기기 알림 토큰",token))}){Text("내 기기 알림 토큰 복사")}
       }

@@ -19,7 +19,7 @@ object Data {
   !sameModel(s,status) || s.optString("market_date")!=status.optString("market_date") || s.optString("mode")!="live" || status.optString("state")!="ready" || Instant.now().isAfter(Instant.parse(s.getString("valid_until")))
  } catch(e:Exception){true}
  fun sync(c:Context) {
-  val base=url(c);require(base.startsWith("https://")){"HTTPS 주소를 입력하세요"}
+  val base=SignalEndpoint.normalize(url(c))
   fun get(name:String):String {
    val connection=URL("$base/$name.json").openConnection() as HttpURLConnection
    try {

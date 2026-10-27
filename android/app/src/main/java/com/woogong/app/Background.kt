@@ -22,6 +22,9 @@ class WoogongApp:Application(){
 class SyncWorker(c:Context,p:WorkerParameters):Worker(c,p){
  override fun doWork():Result {
   var tradingFailed=false
+  if(MeritzAccount.connected(applicationContext)){
+   try{MeritzAccount.sync(applicationContext)}catch(_:Exception){tradingFailed=true}
+  }
   if(TradingConnection.url(applicationContext).isNotBlank()){
    try{TradingConnection.call(applicationContext,"status")}catch(_:Exception){tradingFailed=true}
   }
