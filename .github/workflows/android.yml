@@ -17,6 +17,7 @@ jobs:
         with:
           node-version: '22'
       - run: node tests/portfolio_web.mjs
+      - run: node tests/performance_web.mjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

@@ -1,0 +1,5 @@
+import {windowFor,graph,series,percent,periods} from './performance.mjs';
+let data=null,period='1m';
+function render(){const w=windowFor(data,period);document.getElementById('title').textContent='우공이산 · '+periods[period]+' 비교';document.getElementById('chart').innerHTML=graph(w,true);document.getElementById('values').innerHTML=series.map(([k,label,color])=>`<span style="color:${color}">${label} ${w?percent(w.returns[k]):'—'}</span>`).join('');document.getElementById('date').textContent=w?w.start+' ~ '+w.end+' · 모델 시뮬레이션':'비교 자료 갱신 대기';document.getElementById('periods').innerHTML=Object.entries(periods).map(([k,label])=>`<button class="button" data-period="${k}" style="color:${k===period?'#6654e8':'#8790a6'}">${label}</button>`).join('');}
+document.addEventListener('click',e=>{if(e.target.dataset.period){period=e.target.dataset.period;render();}});
+try{const r=await fetch('snapshot.json',{cache:'no-store'});if(!r.ok)throw Error('fetch');data=await r.json();render();}catch{document.getElementById('chart').textContent='비교 자료를 확인할 수 없습니다.';}

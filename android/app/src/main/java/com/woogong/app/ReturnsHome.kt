@@ -35,26 +35,29 @@ object ReturnsSummary {
 }
 
 @Composable internal fun ReturnsHome(s:JSONObject,stale:Boolean){
- val c=LocalContext.current;val summary=ReturnsSummary.read(c)
- var month by remember{mutableStateOf(true)}
- val light=Color(0xffa2b5c9);val mint=Color(0xff75dfc5)
+ val c=LocalContext.current
+ var period by remember{mutableStateOf(Data.prefs(c).getString("performance_period","1m")?:"1m")}
+ val window=Performance.read(s,period)
+ val light=Color(0xffa2b5c9)
  Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(26.dp),colors=CardDefaults.cardColors(containerColor=Color(0xff142333),contentColor=Color.White)){
-  Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-   Text("나의 수익률",fontSize=18.sp,fontWeight=FontWeight.Bold)
-   Text(if(MeritzAccount.connected(c))"보유 종목 평가수익률 · 실현손익·배당 제외" else "총 수익률 · 순투입금 대비",fontSize=12.sp,color=light)
-   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(summary.first,fontSize=38.sp,fontWeight=FontWeight.Bold,color=mint);Column{Text("이번 달",fontSize=11.sp,color=light);Text("—",fontSize=23.sp,color=mint)}}
-   Text(summary.second,fontSize=10.sp,color=light)
+  Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+   Text("우공이산 vs 시장",fontSize=24.sp,fontWeight=FontWeight.Bold)
+   Text("모델 · TQQQ · 버크셔 B",fontSize=12.sp,color=light)
+   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+    Performance.periods.forEach{(key,label)->TextButton(modifier=Modifier.weight(1f),contentPadding=PaddingValues(horizontal=0.dp),onClick={period=key;Data.prefs(c).edit().putString("performance_period",key).apply();WoogongWidget.updateAll(c)}){Text(if(period==key)"● $label" else label,color=if(period==key)PerformanceColors[0] else light,fontSize=12.sp)}}
+   }
+   if(window==null){Text("비교 자료를 불러오는 중입니다. 최신 결과 확인을 눌러주세요.",fontSize=13.sp,color=light)}
+   else {
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+     listOf("우공이산" to window.last.model,"TQQQ" to window.last.tqqq,"버크셔 B" to window.last.brkb).forEachIndexed{i,(name,value)->Column(Modifier.weight(1f)){Text("● $name",fontSize=11.sp,color=PerformanceColors[i]);Text(Performance.percent(value),fontSize=17.sp,fontWeight=FontWeight.Bold,color=PerformanceColors[i])}}
+    }
+    PerformanceChart(window)
+    Text("동일 기간 · 시작 0% · USD · 세전",fontSize=11.sp,color=light)
+    Text("모델 시뮬레이션 · 다음 종가·편도 0.1% 비용 반영\n비교 종목은 배당·분할 반영 수정종가, 매수 후 보유",fontSize=10.sp,color=light,lineHeight=16.sp)
+   }
    HorizontalDivider(color=Color(0xff304153))
-   Text("내 계좌와 TQQQ 비교",fontWeight=FontWeight.Bold)
-   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){TextButton(onClick={month=true}){Text(if(month)"● 이번 달" else "이번 달",color=mint)};TextButton(onClick={month=false}){Text(if(!month)"● 누적" else "누적",color=mint)}}
-   Text("● 내 계좌    ● TQQQ",fontSize=11.sp,color=light)
-   Box(Modifier.fillMaxWidth().height(90.dp).background(Color(0xff0e1c2a),RoundedCornerShape(12.dp)).padding(14.dp)){Text("${if(month)"월간" else "누적"} 비교 준비 중\n입출금 기록·동일 기간 TQQQ 자료가 필요합니다.",fontSize=12.sp,color=light)}
-   Text("같은 기간·원화 기준 · 시작점 0%",fontSize=10.sp,color=light)
-   HorizontalDivider(color=Color(0xff304153))
-   Text("모델 판단 · 상대강도",fontWeight=FontWeight.Bold)
-   Lines(s.getJSONObject("charts").getJSONArray("relative"),listOf("relative_fast","relative_slow"))
-   Text("EMA20 / EMA45 · ${s.optString("market_date")}${if(stale)" 과거/갱신 대기" else " 확정 종가"}",fontSize=10.sp,color=light)
-   Text("목표  ${Data.allocation(s)}",fontSize=12.sp)
+   Text("${s.optString("market_date")} 미국 종가${if(stale)" · 이전 자료 / 갱신 필요" else " · 갱신 완료"}",fontSize=11.sp,color=if(stale)Gold else light)
+   Text("모델 목표  ${Data.allocation(s)}",fontSize=12.sp)
   }
  }
  LoanTiming(s.optJSONObject("loan_timing"),!stale,s.optString("market_date"),s.optString("valid_until"))

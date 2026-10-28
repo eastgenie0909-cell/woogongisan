@@ -35,6 +35,7 @@ jobs:
         with:
           node-version: '22'
       - run: node tests/portfolio_web.mjs
+      - run: node tests/performance_web.mjs
       - name: Calculate complete close only
         run: |
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then

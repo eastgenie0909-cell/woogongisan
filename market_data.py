@@ -27,7 +27,7 @@ def timestamp(day):
     return int(pd.Timestamp(day).tz_localize('UTC').timestamp())
 
 
-def parse_chart(obj, symbol, expected):
+def parse_chart(obj, symbol, expected, price_field=None):
     chart = obj.get('chart', {})
     if chart.get('error') or not chart.get('result') or len(chart['result']) != 1:
         raise ValueError(f'{symbol}: missing price result')
@@ -40,7 +40,10 @@ def parse_chart(obj, symbol, expected):
     dates = pd.to_datetime(result['timestamp'], unit='s', utc=True).tz_convert(
         meta['exchangeTimezoneName']).tz_localize(None).normalize()
     close = result['indicators']['quote'][0]['close']
-    values = close if BASIS[symbol] == 'close' else result['indicators']['adjclose'][0]['adjclose']
+    field = price_field or BASIS[symbol]
+    if field not in ('close', 'adjclose'):
+        raise ValueError('unsupported price field')
+    values = close if field == 'close' else result['indicators']['adjclose'][0]['adjclose']
     if not len(dates) == len(values) == len(close) or dates.has_duplicates:
         raise ValueError(f'{symbol}: duplicate/unequal candles')
     selected, raw = {}, {}
@@ -112,18 +115,22 @@ def fetch(expected, root=None, client=None):
     btc = pd.read_csv(root/'data/btc.csv', parse_dates=['date_utc']).set_index('date_utc').close.sort_index()
     owned = client is None
     client = client or httpx.Client(timeout=45, headers={'User-Agent': 'Mozilla/5.0'})
-    reports, raw = [], {}
+    reports, raw, benchmarks = [], {}, {}
     try:
         # Anchor-relative start continues working after many years; the research
         # fixtures stay frozen, and GitHub runners need no private data/cache/key.
         anchor = frozen.index[-1]
-        start = anchor - pd.Timedelta(days=550)
+        start = min(anchor - pd.Timedelta(days=550), pd.Timestamp('2021-10-20'))
         for symbol, provider in SYMBOLS.items():
             response = client.get('https://query1.finance.yahoo.com/v8/finance/chart/'+provider,
                 params={'period1': timestamp(start), 'period2': timestamp(expected+pd.Timedelta(days=1)),
                         'interval': '1d', 'events': 'div,splits'})
             response.raise_for_status()
-            series, raw[symbol] = parse_chart(response.json(), symbol, expected)
+            payload = response.json()
+            series, raw[symbol] = parse_chart(payload, symbol, expected)
+            if symbol in ('TQQQ', 'BRK.B'):
+                adjusted, _ = parse_chart(payload, symbol, expected, 'adjclose')
+                benchmarks[symbol] = {str(d.date()): float(v) for d, v in adjusted.items()}
             combined, report = append_verified(frozen[symbol], series, expected, symbol)
             prices = prices.reindex(prices.index.union(combined.index))
             prices[symbol] = combined
@@ -166,4 +173,6 @@ def fetch(expected, root=None, client=None):
     directory = root/'runtime'
     directory.mkdir(exist_ok=True)
     (directory/'market-data-validation.json').write_text(json.dumps(quality, ensure_ascii=False, indent=2), encoding='utf-8')
+    (directory/'benchmark-prices.json').write_text(json.dumps({'market_date':str(expected.date()),
+        'basis':'dividend_and_split_adjusted_close', 'prices':benchmarks}), encoding='utf-8')
     return prices, btc, raw

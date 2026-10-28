@@ -17,7 +17,7 @@ def session(now):
 def fetch(expected):
  from market_data import fetch as public_fetch
  return public_fetch(expected,ROOT)
-def latest_backtest(p,targets,model=None):
+def latest_backtest(p,targets,model=None,return_daily=False):
  model=model or load_model()
  ix=p.loc['2021-10-20':].index;prices=p.reindex(ix)[['TQQQ','BRK.B','GLD','SOXL','BITO']]
  if prices.isna().any().any():raise ValueError('BITO 확장 백테스트 가격 누락')
@@ -34,7 +34,9 @@ def latest_backtest(p,targets,model=None):
    value*=(lo+hi)/2;held=goal.copy();trades+=1
   goal=tar[i];request=np.max(abs(goal-held))>=model.band;nav.append(value)
  v=np.array(nav);dd=v/np.maximum.accumulate(v)-1;cg=v[-1]**(365.25/(ix[-1]-ix[0]).days)-1
- return {**model.metadata(),'data_end':str(ix[-1].date()),'kind':'extended_EOD_audited_price_basis','label':'최신 확장 · 원본 혼합 가격기준 · 다음 종가 · 편도0.1% · 현금금리0 · 세전','cagr':cg,'mdd':float(dd.min()),'calmar':cg/-dd.min(),'trades':trades,'curve':[{'date':str(ix[i].date()),'nav':float(v[i]),'drawdown':float(dd[i])} for i in list(range(0,len(ix)-1,5))+[len(ix)-1]]}
+ result={**model.metadata(),'data_end':str(ix[-1].date()),'kind':'extended_EOD_audited_price_basis','label':'최신 확장 · 원본 혼합 가격기준 · 다음 종가 · 편도0.1% · 현금금리0 · 세전','cagr':cg,'mdd':float(dd.min()),'calmar':cg/-dd.min(),'trades':trades,'curve':[{'date':str(ix[i].date()),'nav':float(v[i]),'drawdown':float(dd[i])} for i in list(range(0,len(ix)-1,5))+[len(ix)-1]]}
+ if return_daily:result['_daily_nav']=pd.Series(v,index=ix)
+ return result
 def snapshot(p,btc,mode,raw=None,model=None):
  model=model or load_model()
  t,ind=evaluate(p,btc,model);last=ind.iloc[-1];day=t.index[-1];target=t.iloc[-1].to_dict();state=int(last.state)
@@ -87,7 +89,7 @@ def main():
  expected,close=found
  existing=json.loads((SITE/'snapshot.json').read_text(encoding='utf-8')) if (SITE/'snapshot.json').exists() else {}
  health=json.loads((SITE/'status.json').read_text(encoding='utf-8')) if (SITE/'status.json').exists() else {}
- if not args.force_refresh and existing.get('data_contract_id')=='audited-mixed-close-v1' and existing.get('market_date')==str(expected.date()) and existing.get('mode')=='live' and existing.get('model_fingerprint')==model.fingerprint and health.get('state')=='ready' and health.get('model_fingerprint')==model.fingerprint:return
+ if not args.force_refresh and existing.get('performance',{}).get('version')=='model-tqqq-brkb-v1' and existing.get('data_contract_id')=='audited-mixed-close-v1' and existing.get('market_date')==str(expected.date()) and existing.get('mode')=='live' and existing.get('model_fingerprint')==model.fingerprint and health.get('state')=='ready' and health.get('model_fingerprint')==model.fingerprint:return
  try:
   p,btc,raw=fetch(expected);data,t=snapshot(p,btc,'live',raw,model)
   data.update(data_contract_id='audited-mixed-close-v1',data_sources={'equities':'Yahoo Finance','btc':'Bitstamp'},price_basis={'QQQ':'close','TQQQ':'close','BRK.B':'close','GLD':'close','SOXL':'adjclose','BITO':'adjclose'})
@@ -100,7 +102,14 @@ def main():
   if evidence.exists():
    archived=json.loads(evidence.read_text(encoding='utf-8'))
    if archived.get('model_fingerprint')==model.fingerprint:write(SITE/'backtest.json',archived)
-  write(SITE/'extended_backtest.json',latest_backtest(p,t,model));write(SITE/'snapshot.json',data);write(SITE/'model.json',model.metadata())
+  extension=latest_backtest(p,t,model,return_daily=True)
+  nav=extension.pop('_daily_nav')
+  from comparison import build as build_comparison
+  try:
+   data['performance']=build_comparison(nav,json.loads((ROOT/'runtime/benchmark-prices.json').read_text(encoding='utf-8')))
+  except (ValueError,KeyError,OSError):
+   data['performance']={'available':False,'message':'비교 자료 갱신 대기'}
+  write(SITE/'extended_backtest.json',extension);write(SITE/'snapshot.json',data);write(SITE/'model.json',model.metadata())
   write(SITE/'status.json',{**model.metadata(),'state':'ready','market_date':data['market_date'],'message':'원본 가격기준 대조 · 확정 종가 계산 완료','data_contract_id':'audited-mixed-close-v1','data_sources':data['data_sources'],'updated_at':now.isoformat()})
  except Exception as exc:
   # Preserve the last valid snapshot and visibly mark it unavailable/stale.

@@ -63,7 +63,6 @@ class MainActivity:ComponentActivity(){
     when(tab){
      0->{
       ReturnsHome(snap,stale)
-      Panel{Text("메리츠증권 · 내 자산",fontWeight=FontWeight.Bold);Text("메리츠 API로 보유잔고·현금·평가액을 자동으로 가져옵니다.",color=Color(0xff7b849a));TextButton(onClick={tab=1}){Text("내 자산 열기 →")}}
       Button(onClick={refresh()},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text(if(busy)"확인 중…" else "최신 결과 확인")}
      }
      1->{
