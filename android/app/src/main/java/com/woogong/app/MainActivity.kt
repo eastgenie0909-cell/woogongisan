@@ -101,9 +101,7 @@ class MainActivity:ComponentActivity(){
       Panel{Text("현재 모델",fontWeight=FontWeight.Bold);Text(snap.optString("version"));Text(snap.optString("approval"));Text("모델 변경은 서버 설정에서 반영되며, 보유량은 휴대폰에 유지됩니다.")}
       var base by remember{mutableStateOf(Data.url(this@MainActivity))}
       Panel{Text("모델 결과 연결",fontWeight=FontWeight.Bold);Text("메리츠 계좌는 내 자산 → 메리츠 계좌에서 연결합니다. 이 주소는 우공 모델의 계산 결과를 받는 곳입니다.",fontSize=12.sp);OutlinedTextField(base,{base=it},label={Text("모델 결과 HTTPS 주소")},modifier=Modifier.fillMaxWidth(),singleLine=true);Button(onClick={try{base=SignalEndpoint.normalize(base);Data.prefs(this@MainActivity).edit().putString("url",base).apply();refresh()}catch(e:Exception){error=e.message?:"주소를 확인하세요"}}){Text("저장하고 결과 확인")};TextButton(onClick={base=BuildConfig.SIGNAL_BASE_URL;Data.prefs(this@MainActivity).edit().putString("url",base).apply();refresh()}){Text("우공이산 기본 주소로 복구")};Text(if(Data.prefs(this@MainActivity).getString("sync_error","").isNullOrEmpty())"표시 자료: ${status.optString("market_date")} · ${if(status.optString("state")=="ready")"계산 완료" else "과거 미리보기 / 자동 계산 미연결"}" else "결과 서버 연결을 다시 확인하세요",fontSize=11.sp)}
-      Panel{Text("장 마감 알림",fontWeight=FontWeight.Bold);Text("GitHub 계산 → 결과 게시 → Firebase 푸시 → 위젯 갱신. 예약 실행·통신·절전 설정에 따라 늦어질 수 있습니다.");Text(if(FirebaseApp.getApps(this@MainActivity).isEmpty())"Firebase 설정 파일이 아직 연결되지 않았습니다." else "Firebase 연결됨 · 휴대폰 알림 권한을 확인하세요.")
-       Button(onClick={val token=Data.prefs(this@MainActivity).getString("fcm_token","")!!;(getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("기기 알림 토큰",token))}){Text("내 기기 알림 토큰 복사")}
-      }
+      CloseAlertSettings(resumeTick)
       Panel{Text("위젯 추가",fontWeight=FontWeight.Bold);Text("홈 화면을 길게 누르고 위젯 → 우공이산을 선택하세요. 5×2 크기로 수익률·TQQQ 비교 준비 상태와 목표 비중을 표시합니다.")}
      }
     };Spacer(Modifier.height(18.dp))

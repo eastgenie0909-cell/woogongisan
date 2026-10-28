@@ -46,6 +46,9 @@ object Data {
   edit.apply()
   try{PortfolioStore.recordDaily(c,obj,health);prefs(c).edit().remove("portfolio_error").apply()}
   catch(_:Exception){prefs(c).edit().putString("portfolio_error","자산 기록을 저장하지 못했습니다. 내 자산에서 잔고를 확인하세요.").apply()}
+  // A successful fresh model read produces a local notification even without FCM.
+  // Notification failures must not turn a successful data sync into a stale model.
+  try{CloseAlerts.onSynced(c,obj,health)}catch(_:Exception){}
  }
  fun allocation(s:JSONObject):String {
   val w=s.getJSONObject("target")

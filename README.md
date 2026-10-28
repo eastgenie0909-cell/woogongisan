@@ -1,10 +1,10 @@
 # 우공이산 앱 · V1.3-D
 
-Android 앱과 홈 화면 위젯, 웹 대시보드, 장 마감 계산 파이프라인입니다. 앱 버전은 0.6.0이며 기본 투자 모델은 **우공 V1.3-D = D25**입니다.
+Android 앱과 홈 화면 위젯, 웹 대시보드, 장 마감 계산 파이프라인입니다. 앱 버전은 0.6.1이며 기본 투자 모델은 **우공 V1.3-D = D25**입니다.
 
 기존 3661 코어 → Cross5·GLD21 → QQQ SMA200 약세 시 방어 몫 25% 달러 현금 순서로 적용합니다. 강제 BRK.B 상태에도 D25를 적용하고, 재조정 문턱은 12.5%p입니다. 목표 비중·적용 이유·상대강도/방어/낙폭 차트·모델별 과거 성과·개인 보유량 비교를 표시합니다.
 
-내장 오프라인 자료는 **2026-10-20 과거 미리보기**이며, 온라인 모델 결과는 [GitHub Pages](https://eastgenie0909-cell.github.io/woogongisan/)에서 최신 완료 거래일로 갱신합니다. 모델은 원본 혼합 가격기준을 보존한 Yahoo Finance·Bitstamp 데이터로 자동 계산하고, 개인 계좌는 Android에서 메리츠에 직접 조회합니다. Tiingo 키가 필요하지 않습니다. Firebase는 별도 미설정입니다. 연구의 본운용 미승인 상태와 주문 잠금을 유지합니다. 개발용 APK의 빌드 성공과 실제 휴대폰의 푸시·위젯 동작 검증은 별개입니다.
+내장 오프라인 자료는 **2026-10-20 과거 미리보기**이며, 온라인 모델 결과는 [GitHub Pages](https://eastgenie0909-cell.github.io/woogongisan/)에서 최신 완료 거래일로 갱신합니다. 모델은 원본 혼합 가격기준을 보존한 Yahoo Finance·Bitstamp 데이터로 자동 계산하고, 개인 계좌는 Android에서 메리츠에 직접 조회합니다. Tiingo 키가 필요하지 않습니다. 0.6.1부터 새 종가 결과는 휴대폰 자체 알림으로 알려주며 Firebase 설정이 필요하지 않습니다. 연구의 본운용 미승인 상태와 주문 잠금을 유지합니다. 개발용 APK의 빌드 성공과 실제 휴대폰의 푸시·위젯 동작 검증은 별개입니다.
 
 ## 현재 표시 범위
 
@@ -53,7 +53,7 @@ Windows에서는 JDK17·Android SDK36을 준비하고 `JAVA_HOME`·`ANDROID_HOME
 
 시세 연결 상태와 공급자별 설정은 [GitHub 연결 안내](GITHUB_SETUP.md)를 확인하세요. 자동 계산은 Yahoo Finance·Bitstamp용이며 메리츠 계좌는 Android에서 직접 조회합니다. 메리츠 키를 GitHub Secrets에 등록하는 절차가 아닙니다. 푸시를 쓰려면 Firebase Android 앱 `com.woogong.app`을 만들고 `GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FCM_TOKENS`를 등록합니다. 마지막 값은 앱 설정에서 복사한 기기 토큰의 JSON 배열입니다. 비밀키는 APK 소스에 내장하지 않습니다.
 
-앱 설정에서 Pages의 HTTPS 주소를 저장합니다. 알림 권한을 허용하고 홈 화면에 우공이산 위젯을 추가합니다. **Woogong close calculation** Actions는 미국 휴장·조기폐장·서머타임과 완료된 BTC UTC 일봉을 반영합니다. 계산 결과가 게시된 뒤 푸시를 보냅니다. 예약 실행·데이터 제공·폰 절전으로 지연될 수 있습니다.
+앱 설정에서 Pages의 HTTPS 주소를 저장합니다. 알림 권한을 허용하고 홈 화면에 우공이산 위젯을 추가합니다. **Woogong close calculation** Actions는 미국 휴장·조기폐장·서머타임과 완료된 BTC UTC 일봉을 반영합니다. 계산 결과가 게시되면 휴대폰 백그라운드 조회에서 하루·모델별 한 번 알립니다. 앱 설정의 알림 테스트에서 권한과 채널을 확인할 수 있습니다. Firebase를 추가 설정한 경우 푸시는 조회를 깨우는 선택 경로로 사용합니다. 예약 실행·데이터 제공·폰 절전으로 지연될 수 있습니다.
 
 ## 과거 성과의 조건
 

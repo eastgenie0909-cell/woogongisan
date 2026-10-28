@@ -38,9 +38,8 @@ class SyncWorker(c:Context,p:WorkerParameters):Worker(c,p){
 class PushService:FirebaseMessagingService(){
  override fun onNewToken(token:String){Data.prefs(this).edit().putString("fcm_token",token).apply()}
  override fun onMessageReceived(message:RemoteMessage){
-  val intent=PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-  val note=NotificationCompat.Builder(this,"close").setSmallIcon(com.woogong.app.R.drawable.ic_notification).setContentTitle(message.data["title"]?:getString(R.string.app_name)).setContentText(message.data["body"]?:"장 마감 결과를 확인하세요").setAutoCancel(true).setContentIntent(intent).build()
-  if(ContextCompat.checkSelfPermission(this,Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED || android.os.Build.VERSION.SDK_INT<33)getSystemService(NotificationManager::class.java).notify(3661,note)
+  // FCM is an optional wake-up. Worker and manual refresh use the same validated,
+  // persistent model/date deduplication path, so push + polling cannot alert twice.
   WorkManager.getInstance(this).enqueue(OneTimeWorkRequestBuilder<SyncWorker>().setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST).build())
  }
 }
