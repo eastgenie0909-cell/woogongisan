@@ -1,0 +1,6 @@
+<resources>
+ <color name="widget_surface">#171F2D</color><color name="widget_border">#30394B</color>
+ <color name="widget_text">#E5E8F1</color><color name="widget_muted">#A5AEC2</color>
+ <color name="widget_model">#75DFC5</color><color name="widget_tqqq">#9AADFF</color><color name="widget_brkb">#E5BB70</color>
+ <color name="widget_chip">#302A4D</color><color name="widget_chip_text">#C6BDFF</color>
+</resources>

@@ -26,7 +26,7 @@ import org.json.JSONObject
 import java.util.Locale
 import kotlin.math.abs
 
-private val Muted=Color(0xff8790a6)
+private val Muted:Color @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 private val Positive=Color(0xffe15c68)
 private val Negative=Color(0xff4385ce)
 internal fun won(v:Double)=String.format(Locale.KOREA,"%,.0f원",v)
@@ -57,7 +57,7 @@ private fun tone(v:Double)=if(v>=0)Positive else Negative
    PortfolioStore.decode(text);backupPreview=text
   }catch(e:Exception){message=e.message?:"지원하는 우공이산 백업 파일을 선택하세요"}
  }
- if(message.isNotEmpty())Surface(color=Color(0xffeeebff),shape=RoundedCornerShape(16.dp)){Text(message,Modifier.padding(14.dp),color=Mint,fontSize=12.sp)}
+ if(message.isNotEmpty())Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=RoundedCornerShape(16.dp)){Text(message,Modifier.padding(14.dp),color=Mint,fontSize=12.sp)}
  if(editing){AccountEditor(state.account,saved={a->PortfolioStore.saveAccount(c,a);reload();editing=false;message="메리츠 잔고를 저장했습니다"},cancel={editing=false});return}
  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
   Column{Text("내 자산",fontSize=25.sp,fontWeight=FontWeight.Bold);Text("메리츠증권 · 직접 확인한 잔고",fontSize=12.sp,color=Muted)}
@@ -65,7 +65,7 @@ private fun tone(v:Double)=if(v>=0)Positive else Negative
  }
  val a=state.account
  if(a==null){
-  Surface(shape=RoundedCornerShape(28.dp),color=Ink){Column(Modifier.padding(26.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
+  Surface(shape=RoundedCornerShape(28.dp),color=Color(0xff192441),contentColor=Color.White){Column(Modifier.padding(26.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
    Icon(Icons.Outlined.AccountBalanceWallet,null,tint=Color(0xffa99cff),modifier=Modifier.size(36.dp))
    Text("내 돈의 흐름을,\n한눈에 담아보세요.",fontSize=26.sp,lineHeight=36.sp,fontWeight=FontWeight.Bold,color=Color.White)
    Text("투입금과 보유 주식, 원화·달러 현금을 등록하면 평가액과 목표 매매 수량을 함께 볼 수 있어요.",color=Color(0xffb2b9cf),lineHeight=22.sp)
@@ -78,7 +78,7 @@ private fun tone(v:Double)=if(v>=0)Positive else Negative
   val v=try{PortfolioEngine.value(priced.account)}catch(_:Exception){null}
   val previous=state.history.lastOrNull{it.date<PortfolioStore.today()}
   val delta=if(v!=null&&previous!=null&&priced.recordable)v.totalKrw-previous.totalKrw-(a.flowKrw-previous.flowKrw) else null
-  Surface(shape=RoundedCornerShape(28.dp),color=Ink){Column(Modifier.background(Brush.linearGradient(listOf(Color(0xff192441),Color(0xff34305b)))).padding(25.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+  Surface(shape=RoundedCornerShape(28.dp),color=Color(0xff192441),contentColor=Color.White){Column(Modifier.background(Brush.linearGradient(listOf(Color(0xff192441),Color(0xff34305b)))).padding(25.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("총 평가자산",color=Color(0xffb8bfd5),fontSize=12.sp);Text("MERITZ",color=Color(0xffd4caff),fontSize=11.sp,letterSpacing=2.sp)}
    Text(v?.let{won(it.totalKrw)}?:"가격 입력 필요",fontSize=31.sp,fontWeight=FontWeight.Bold,color=Color.White,letterSpacing=(-1).sp)
    Text(v?.let{"달러 자산 ${usd(it.totalUsd)} + 원화 현금 ${won(a.cashKrw)}"}?:"보유 종목의 기준가격과 환율을 입력해주세요",fontSize=11.sp,color=Color(0xffb8bfd5))
@@ -104,14 +104,14 @@ private fun tone(v:Double)=if(v>=0)Positive else Negative
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("보유 주식",fontWeight=FontWeight.Bold);Text("USD 기준",color=Muted,fontSize=11.sp)}
    priced.account.positions.filter{it.quantity>0}.forEach{p->
     Row(Modifier.fillMaxWidth().padding(vertical=7.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
-     Row(verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(13.dp),color=Color(0xfff0eefb)){Text(p.symbol.take(2),Modifier.padding(11.dp),color=Mint,fontWeight=FontWeight.Bold,fontSize=12.sp)};Spacer(Modifier.width(11.dp));Column{Text(p.symbol,fontWeight=FontWeight.Bold);Text("${qty(p.quantity)}주 · 1주 ${if(p.price>0)usd(p.price) else "가격 필요"}",color=Muted,fontSize=11.sp)}}
+     Row(verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(13.dp),color=MaterialTheme.colorScheme.primaryContainer){Text(p.symbol.take(2),Modifier.padding(11.dp),color=Mint,fontWeight=FontWeight.Bold,fontSize=12.sp)};Spacer(Modifier.width(11.dp));Column{Text(p.symbol,fontWeight=FontWeight.Bold);Text("${qty(p.quantity)}주 · 1주 ${if(p.price>0)usd(p.price) else "가격 필요"}",color=Muted,fontSize=11.sp)}}
      Column(horizontalAlignment=Alignment.End){Text(if(p.price>0)usd(p.quantity*p.price) else "—",fontWeight=FontWeight.SemiBold);if(p.average>0&&p.price>0)Text((if(p.price>=p.average)"+" else "−")+usd(abs((p.price-p.average)*p.quantity)),color=tone(p.price-p.average),fontSize=11.sp) else Text("평균단가 미입력",color=Muted,fontSize=10.sp)}
     }
    }
-   HorizontalDivider(color=Color(0xffedf0f6));StatLine("달러 현금",usd(a.cashUsd));StatLine("원화 현금",won(a.cashKrw))
+   HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant);StatLine("달러 현금",usd(a.cashUsd));StatLine("원화 현금",won(a.cashKrw))
   }
   Panel{
-   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("목표 매매 계획",fontWeight=FontWeight.Bold);Surface(shape=RoundedCornerShape(8.dp),color=Color(0xffeeebff)){Text("정수주",Modifier.padding(8.dp,4.dp),color=Mint,fontSize=10.sp)}}
+   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("목표 매매 계획",fontWeight=FontWeight.Bold);Surface(shape=RoundedCornerShape(8.dp),color=MaterialTheme.colorScheme.primaryContainer){Text("정수주",Modifier.padding(8.dp,4.dp),color=Mint,fontSize=10.sp)}}
    val stale=Data.stale(snap,status)
    Text("${snap.optString("version")} · ${snap.optString("market_date")} 목표 비중",color=Muted,fontSize=11.sp)
    if(stale){
@@ -129,7 +129,7 @@ private fun tone(v:Double)=if(v>=0)Positive else Negative
      plan.rows.filter{it.current>0||it.targetWeight>0}.forEach{r->
       Row(Modifier.fillMaxWidth().padding(vertical=8.dp),horizontalArrangement=Arrangement.SpaceBetween){Column{Text(r.symbol,fontWeight=FontWeight.Bold);Text("현재 ${qty(r.current)}주 → 계획 후 ${qty(r.after)}주",color=Muted,fontSize=11.sp)};Text(when{r.sell>0->"${r.sell}주 매도";r.buy>0->"${r.buy}주 매수";else->"유지"},color=when{r.sell>0->Negative;r.buy>0->Positive;else->Muted},fontWeight=FontWeight.Bold)}
      }
-     HorizontalDivider(color=Color(0xffedf0f6));StatLine("매매 후 달러 현금",usd(plan.cashAfter),Mint)
+     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant);StatLine("매매 후 달러 현금",usd(plan.cashAfter),Mint)
      StatLine("목표 현금 / 최소 유보",usd(plan.desiredCash));StatLine("예상 비용·가격 여유",usd(plan.estimatedCost))
      Text("달러 운용자산 ${usd(plan.budget)} 기준. 원화 현금 ${won(a.cashKrw)}과 전략 외 주식 ${usd(plan.outsideStrategy)}은 유지합니다. 매도 대금 사용이 가능하다는 가정이며, 실제 매수가능금액을 확인해주세요.",color=Muted,fontSize=11.sp,lineHeight=17.sp)
      Text("수수료 편도 ${"%.2f".format(a.fee*100)}% · 가격 여유 ${"%.2f".format(a.slippage*100)}%. 매도 후 매수 순서의 참고 계획이며, 체결 결과와 보유량은 자동 변경하지 않습니다.",color=Muted,fontSize=11.sp,lineHeight=17.sp)
@@ -154,11 +154,11 @@ private fun tone(v:Double)=if(v>=0)Positive else Negative
  backupPreview?.let{raw->val parsed=PortfolioStore.decode(raw);AlertDialog(onDismissRequest={backupPreview=null},title={Text("자산 백업을 복원할까요?")},text={Text("${parsed.account?.broker} · 일별 기록 ${parsed.history.size}개\n현재 휴대폰의 잔고와 기록을 이 백업으로 교체합니다.")},confirmButton={TextButton(onClick={try{PortfolioStore.write(c,parsed);reload();backupPreview=null;message="백업을 복원했습니다"}catch(e:Exception){message=e.message?:"복원 실패"}}){Text("복원")}},dismissButton={TextButton(onClick={backupPreview=null}){Text("취소")}})}
 }
 
-@Composable private fun SmallStat(label:String,value:String,modifier:Modifier,color:Color=Ink){Surface(modifier,shape=RoundedCornerShape(20.dp),color=Color.White){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Text(label,fontSize=10.sp,color=Muted);Text(value,fontSize=15.sp,fontWeight=FontWeight.Bold,color=color)}}}
+@Composable private fun SmallStat(label:String,value:String,modifier:Modifier,color:Color=Ink){Surface(modifier,shape=RoundedCornerShape(20.dp),color=MaterialTheme.colorScheme.surface){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){Text(label,fontSize=10.sp,color=Muted);Text(value,fontSize=15.sp,fontWeight=FontWeight.Bold,color=color)}}}
 @Composable private fun StatLine(label:String,value:String,color:Color=Ink){Row(Modifier.fillMaxWidth().padding(vertical=5.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(label,color=Muted,fontSize=12.sp);Text(value,color=color,fontSize=13.sp,fontWeight=FontWeight.SemiBold)}}
-@Composable private fun WealthChart(history:List<DailyMark>){Canvas(Modifier.fillMaxWidth().height(155.dp).padding(top=15.dp,bottom=5.dp)){
+@Composable private fun WealthChart(history:List<DailyMark>){val accent=Mint;Canvas(Modifier.fillMaxWidth().height(155.dp).padding(top=15.dp,bottom=5.dp)){
  val showCapital=history.all{it.capitalKnown};val values=history.flatMap{if(showCapital)listOf(it.totalKrw,it.capitalKrw) else listOf(it.totalKrw)};val lo=values.min();val range=(values.max()-lo).coerceAtLeast(1.0)
- for(series in 0..(if(showCapital)1 else 0)){val path=Path();history.forEachIndexed{i,h->val x=size.width*i/(history.size-1);val v=if(series==0)h.totalKrw else h.capitalKrw;val y=size.height*(1-((v-lo)/range).toFloat());if(i==0)path.moveTo(x,y)else path.lineTo(x,y)};drawPath(path,if(series==0)Mint else Color(0xffc9ceda),style=androidx.compose.ui.graphics.drawscope.Stroke(if(series==0)4f else 2f))}
+ for(series in 0..(if(showCapital)1 else 0)){val path=Path();history.forEachIndexed{i,h->val x=size.width*i/(history.size-1);val v=if(series==0)h.totalKrw else h.capitalKrw;val y=size.height*(1-((v-lo)/range).toFloat());if(i==0)path.moveTo(x,y)else path.lineTo(x,y)};drawPath(path,if(series==0)accent else Color(0xffc9ceda),style=androidx.compose.ui.graphics.drawscope.Stroke(if(series==0)4f else 2f))}
 }}
 private data class Draft(val symbol:String,val quantity:String="",val average:String="",val price:String="")
 @Composable private fun MoneyField(label:String,text:String,change:(String)->Unit,modifier:Modifier=Modifier){OutlinedTextField(text,change,label={Text(label,fontSize=12.sp)},modifier=modifier.fillMaxWidth(),singleLine=true,shape=RoundedCornerShape(14.dp),keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal))}

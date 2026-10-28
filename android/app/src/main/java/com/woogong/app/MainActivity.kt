@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.firebase.FirebaseApp
@@ -35,17 +37,15 @@ import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal val Ink=Color(0xff18213c)
-internal val Mint=Color(0xff6654e8)
-internal val Gold=Color(0xffae8545)
 class MainActivity:ComponentActivity(){
  private var resumeTick by mutableIntStateOf(0)
  override fun onResume(){super.onResume();resumeTick++}
  private val permission=registerForActivityResult(ActivityResultContracts.RequestPermission()){}
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState)
+  enableEdgeToEdge()
   if(android.os.Build.VERSION.SDK_INT>=33)permission.launch(Manifest.permission.POST_NOTIFICATIONS)
   if(FirebaseApp.getApps(this).isNotEmpty())FirebaseMessaging.getInstance().token.addOnSuccessListener{Data.prefs(this).edit().putString("fcm_token",it).apply()}
-  setContent{MaterialTheme(colorScheme=lightColorScheme(primary=Mint,background=Color(0xfff5f6fa),surface=Color.White,onSurface=Ink,onBackground=Ink)) { App() }}
+  setContent{WoogongTheme { App() }}
  }
  @Composable fun App(){
   var tab by remember{mutableIntStateOf(0)};var snap by remember{mutableStateOf(Data.load(this,"snapshot"))};var status by remember{mutableStateOf(Data.load(this,"status"))}
@@ -56,8 +56,12 @@ class MainActivity:ComponentActivity(){
   LaunchedEffect(resumeTick){snap=Data.load(this@MainActivity,"snapshot");status=Data.load(this@MainActivity,"status");back=Data.load(this@MainActivity,"backtest");if(MeritzAccount.connected(this@MainActivity))try{withContext(Dispatchers.IO){MeritzAccount.sync(this@MainActivity)}}catch(_:Exception){}}
   val stale=remember(clockTick,snap,status,error){Data.stale(snap,status)||error.isNotEmpty()||Data.prefs(this@MainActivity).getString("sync_error","")!!.isNotEmpty()}
   val icons=listOf(Icons.Outlined.Home,Icons.Outlined.AccountBalanceWallet,Icons.Outlined.Lightbulb,Icons.Outlined.ShowChart,Icons.Outlined.Settings)
-  Scaffold(containerColor=Color(0xfff5f6fa),topBar={Row(Modifier.fillMaxWidth().padding(24.dp,18.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Column{Text("우공이산",fontSize=27.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1).sp);Text("나의 자산, 흔들리지 않는 기준",fontSize=11.sp,color=Color(0xff8991a5))};Surface(color=Color(0xffeceafb),shape=RoundedCornerShape(20.dp)){Text(snap.optString("version").removePrefix("우공 "),Modifier.padding(12.dp,7.dp),fontSize=11.sp,color=Mint,fontWeight=FontWeight.Bold)}}},bottomBar={NavigationBar(containerColor=Color.White,tonalElevation=0.dp){listOf("오늘","내 자산","이유","성과","설정").forEachIndexed{i,label->NavigationBarItem(selected=tab==i,onClick={tab=i},icon={Icon(icons[i],contentDescription=label)},label={Text(label,fontSize=11.sp)},colors=NavigationBarItemDefaults.colors(selectedIconColor=Mint,selectedTextColor=Mint,indicatorColor=Color(0xffeeebff),unselectedIconColor=Color(0xff9aa2b5),unselectedTextColor=Color(0xff9aa2b5)))}}}){padding->
-   Column(Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+  Scaffold(modifier=Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),containerColor=MaterialTheme.colorScheme.background,
+   topBar={Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal=24.dp,vertical=18.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+    Column(Modifier.weight(1f)){Text("우공이산",maxLines=1,overflow=TextOverflow.Ellipsis,fontSize=25.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1).sp);Text("차분하게, 더 멀리",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+    Surface(color=MaterialTheme.colorScheme.primaryContainer,shape=RoundedCornerShape(12.dp)){Text(snap.optString("version").removePrefix("우공 "),Modifier.padding(12.dp,8.dp),fontSize=10.sp,color=MaterialTheme.colorScheme.onPrimaryContainer,fontWeight=FontWeight.Bold)}
+   }},bottomBar={NavigationBar(containerColor=MaterialTheme.colorScheme.surface,tonalElevation=0.dp){listOf("오늘","내 자산","이유","성과","설정").forEachIndexed{i,label->NavigationBarItem(selected=tab==i,onClick={tab=i},icon={Icon(icons[i],contentDescription=label)},label={Text(label,fontSize=11.sp)},colors=NavigationBarItemDefaults.colors(selectedIconColor=Mint,selectedTextColor=Mint,indicatorColor=MaterialTheme.colorScheme.primaryContainer,unselectedIconColor=MaterialTheme.colorScheme.onSurfaceVariant,unselectedTextColor=MaterialTheme.colorScheme.onSurfaceVariant))}}}){padding->
+   Column(Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
     if(stale&&tab!=1)Panel{Text(if(snap.optString("mode")!="live")"과거 자료 미리보기" else "새 종가 갱신 대기",color=Gold,fontWeight=FontWeight.Bold);Text("기준일 ${snap.optString("market_date")} · 현재 매매 신호로 사용하지 마세요.")}
     if(error.isNotEmpty())Text(error,color=MaterialTheme.colorScheme.error)
     when(tab){
@@ -101,22 +105,23 @@ class MainActivity:ComponentActivity(){
       var base by remember{mutableStateOf(Data.url(this@MainActivity))}
       Panel{Text("모델 결과 연결",fontWeight=FontWeight.Bold);Text("메리츠 계좌는 내 자산 → 메리츠 계좌에서 연결합니다. 이 주소는 우공 모델의 계산 결과를 받는 곳입니다.",fontSize=12.sp);OutlinedTextField(base,{base=it},label={Text("모델 결과 HTTPS 주소")},modifier=Modifier.fillMaxWidth(),singleLine=true);Button(onClick={try{base=SignalEndpoint.normalize(base);Data.prefs(this@MainActivity).edit().putString("url",base).apply();refresh()}catch(e:Exception){error=e.message?:"주소를 확인하세요"}}){Text("저장하고 결과 확인")};TextButton(onClick={base=BuildConfig.SIGNAL_BASE_URL;Data.prefs(this@MainActivity).edit().putString("url",base).apply();refresh()}){Text("우공이산 기본 주소로 복구")};Text(if(Data.prefs(this@MainActivity).getString("sync_error","").isNullOrEmpty())"표시 자료: ${status.optString("market_date")} · ${if(status.optString("state")=="ready")"계산 완료" else "과거 미리보기 / 자동 계산 미연결"}" else "결과 서버 연결을 다시 확인하세요",fontSize=11.sp)}
       CloseAlertSettings(resumeTick)
-      Panel{Text("위젯 추가",fontWeight=FontWeight.Bold);Text("홈 화면을 길게 누르고 위젯 → 우공이산을 선택하세요. 5×2 크기로 수익률·TQQQ 비교 준비 상태와 목표 비중을 표시합니다.")}
+      Panel{Text("위젯 컬렉션",fontWeight=FontWeight.Bold);Text("홈 화면을 길게 누르고 위젯 → 우공이산에서 선택하세요.\n요약 3×2 · 그래프 5×2 · 상세 5×3\n위젯의 기간 버튼으로 기간을 바꿀 수 있습니다. 크기가 작아지면 요약형으로 자동 전환되며 시스템 화면 모드도 따라갑니다.");Text("화면 테마 · 시스템 설정 사용",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp)}
      }
     };Spacer(Modifier.height(18.dp))
    }
   }
  }
 }
-@Composable internal fun Panel(content:@Composable ColumnScope.()->Unit){Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=Color.White)){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(9.dp),content=content)}}
+@Composable internal fun Panel(content:@Composable ColumnScope.()->Unit){Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(9.dp),content=content)}}
 @Composable private fun Metric(title:String,value:Double){Column{Text(title);Text("%.2f%%".format(value*100),fontWeight=FontWeight.Bold)}}
 @Composable internal fun Lines(data:JSONArray,keys:List<String>){
+ val lineColors=listOf(Mint,Gold,MaterialTheme.colorScheme.onSurfaceVariant)
  Canvas(Modifier.fillMaxWidth().height(160.dp).padding(vertical=12.dp)){
   if(data.length()<2)return@Canvas
   val values=(0 until data.length()).flatMap{i->keys.map{data.getJSONObject(i).getDouble(it)}};val lo=values.min();val range=(values.max()-lo).coerceAtLeast(1e-9)
   for((index,key) in keys.withIndex()){
    val path=Path();for(i in 0 until data.length()){val x=size.width*i/(data.length()-1);val y=size.height*(1-((data.getJSONObject(i).getDouble(key)-lo)/range).toFloat());if(i==0)path.moveTo(x,y)else path.lineTo(x,y)}
-   drawPath(path,listOf(Mint,Gold,Color(0xff879ba5))[index%3],style=androidx.compose.ui.graphics.drawscope.Stroke(width=if(index==0)3f else 2f))
+   drawPath(path,lineColors[index%3],style=androidx.compose.ui.graphics.drawscope.Stroke(width=if(index==0)3f else 2f))
   }
   drawLine(Color(0xffdfe6e5),Offset(0f,size.height),Offset(size.width,size.height),1f)
  }

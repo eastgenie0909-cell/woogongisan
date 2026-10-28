@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">우공이산</string>
+    <string name="widget_graph_description">모델·TQQQ·버크셔 B 비교 그래프</string>
+    <string name="widget_compact_description">작은 공간의 세 수익률 요약</string>
+    <string name="widget_detail_description">큰 그래프와 모델 목표·초과 수익률</string>
 </resources>

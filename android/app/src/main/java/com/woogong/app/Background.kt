@@ -14,6 +14,7 @@ import com.google.firebase.messaging.RemoteMessage
 import java.util.concurrent.TimeUnit
 
 class WoogongApp:Application(){
+ override fun onConfigurationChanged(config:android.content.res.Configuration){super.onConfigurationChanged(config);WoogongWidget.updateAll(this)}
  override fun onCreate(){super.onCreate()
   getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel("close","장 마감 결과",NotificationManager.IMPORTANCE_DEFAULT))
   WorkManager.getInstance(this).enqueueUniquePeriodicWork("fallback-sync",ExistingPeriodicWorkPolicy.KEEP,PeriodicWorkRequestBuilder<SyncWorker>(30,TimeUnit.MINUTES).setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build())

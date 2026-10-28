@@ -3,45 +3,87 @@ package com.woogong.app
 import android.app.PendingIntent
 import android.appwidget.*
 import android.content.*
+import android.content.res.Configuration
 import android.graphics.*
+import android.os.Bundle
 import android.widget.RemoteViews
 
-class WoogongWidget:AppWidgetProvider(){
+open class WoogongWidget:AppWidgetProvider(){
  override fun onUpdate(c:Context,m:AppWidgetManager,ids:IntArray){ids.forEach{update(c,m,it)}}
+ override fun onAppWidgetOptionsChanged(c:Context,m:AppWidgetManager,id:Int,options:Bundle){update(c,m,id)}
+ override fun onDeleted(c:Context,ids:IntArray){Data.prefs(c).edit().apply{ids.forEach{remove("widget_period_$it")}}.apply()}
+ override fun onReceive(c:Context,intent:Intent){
+  if(intent.action==PERIOD_ACTION){
+   val id=intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,AppWidgetManager.INVALID_APPWIDGET_ID)
+   val m=AppWidgetManager.getInstance(c)
+   if(m.getAppWidgetInfo(id)?.provider?.packageName==c.packageName){
+    val p=Data.prefs(c);val key="widget_period_$id";val old=p.getString(key,p.getString("performance_period","1m"))?:"1m"
+    p.edit().putString(key,WidgetPresentation.nextPeriod(old)).apply();update(c,m,id)
+   }
+  }else super.onReceive(c,intent)
+ }
  companion object {
-  fun updateAll(c:Context){val m=AppWidgetManager.getInstance(c);m.getAppWidgetIds(ComponentName(c,WoogongWidget::class.java)).forEach{update(c,m,it)}}
+  private const val PERIOD_ACTION="com.woogong.app.WIDGET_PERIOD"
+  fun updateAll(c:Context){val m=AppWidgetManager.getInstance(c);listOf(WoogongWidget::class.java,WoogongCompactWidget::class.java,WoogongDetailWidget::class.java).forEach{type->m.getAppWidgetIds(ComponentName(c,type)).forEach{update(c,m,it)}}}
   fun update(c:Context,m:AppWidgetManager,id:Int){
-   val s=Data.load(c,"snapshot");val status=Data.load(c,"status");val stale=Data.stale(s,status)||Data.prefs(c).getString("sync_error","")!!.isNotEmpty()
-   val period=Data.prefs(c).getString("performance_period","1m")?:"1m"
+   val info=m.getAppWidgetInfo(id)?:return
+   val options=m.getAppWidgetOptions(id)
+   val preferred=when(info.provider.className){WoogongCompactWidget::class.java.name->WidgetPresentation.Layout.COMPACT;WoogongDetailWidget::class.java.name->WidgetPresentation.Layout.DETAIL;else->WidgetPresentation.Layout.GRAPH}
+   val defaultWidth=if(preferred==WidgetPresentation.Layout.COMPACT)210 else 340
+   val defaultHeight=if(preferred==WidgetPresentation.Layout.DETAIL)250 else 130
+   // Choose a layout that fits both reported orientations; never assume a launcher grid cell size.
+   val width=options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,defaultWidth)
+   val height=options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,defaultHeight)
+   val layout=WidgetPresentation.layout(width,height,c.resources.configuration.fontScale,preferred)
+   val s=Data.load(c,"snapshot");val status=Data.load(c,"status");val prefs=Data.prefs(c)
+   val stale=Data.stale(s,status)||!prefs.getString("sync_error","").isNullOrEmpty()
+   val period=prefs.getString("widget_period_$id",prefs.getString("performance_period","1m"))?:"1m"
    val window=Performance.read(s,period)
-   val v=RemoteViews(c.packageName,R.layout.widget)
-   v.setTextViewText(R.id.title,"우공이산 · "+(Performance.periods[period]?:"1개월")+" 비교")
-   v.setTextViewText(R.id.account,"우공 "+(window?.let{Performance.percent(it.last.model)}?:"—"))
-   v.setTextViewText(R.id.weights,"TQQQ "+(window?.let{Performance.percent(it.last.tqqq)}?:"—"))
-   v.setTextViewText(R.id.loan,"버크셔 "+(window?.let{Performance.percent(it.last.brkb)}?:"—"))
-   v.setTextViewText(R.id.state,if(window==null)"앱에서 최신 결과를 확인하세요" else "${window.start} ~ ${window.end} · USD · 모델 시뮬레이션"+(if(stale)" · 갱신 필요" else ""))
-   v.setImageViewBitmap(R.id.chart,chart(window))
-   val intent=PendingIntent.getActivity(c,0,Intent(c,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-   v.setOnClickPendingIntent(R.id.widget_root,intent)
+   val resource=when(layout){WidgetPresentation.Layout.COMPACT->R.layout.widget_compact;WidgetPresentation.Layout.DETAIL->R.layout.widget_detail;else->R.layout.widget}
+   val v=RemoteViews(c.packageName,resource)
+   v.setTextViewText(R.id.title,"우공이산")
+   v.setTextViewText(R.id.period,(Performance.periods[period]?:"1개월")+" ↻")
+   v.setTextViewText(R.id.account,window?.let{Performance.percent(it.last.model)}?:"—")
+   v.setTextViewText(R.id.weights,window?.let{Performance.percent(it.last.tqqq)}?:"—")
+   v.setTextViewText(R.id.loan,window?.let{Performance.percent(it.last.brkb)}?:"—")
+   v.setTextViewText(R.id.state,if(window==null)"비교 자료 갱신 대기 · 앱에서 확인" else "${window.end} · USD · 모의${if(stale)" · 갱신 대기" else ""}")
+   if(layout==WidgetPresentation.Layout.DETAIL){
+    val gap=window?.let{"TQQQ 대비 %+.2f%%p".format((it.last.model-it.last.tqqq)*100)}?:"비교 자료 갱신 대기"
+    v.setTextViewText(R.id.detail,"모델 목표  ${Data.allocation(s)}\n$gap")
+   }
+   val dark=c.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK==Configuration.UI_MODE_NIGHT_YES
+   v.setImageViewBitmap(R.id.chart,chart(window,dark,layout==WidgetPresentation.Layout.COMPACT))
+   val open=PendingIntent.getActivity(c,id,Intent(c,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+   v.setOnClickPendingIntent(R.id.widget_root,open)
+   val cycle=Intent(PERIOD_ACTION).setComponent(info.provider).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id)
+   v.setOnClickPendingIntent(R.id.period,PendingIntent.getBroadcast(c,id,cycle,PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
    m.updateAppWidget(id,v)
   }
-  internal fun chart(window:PerformanceWindow?):Bitmap {
-   val bitmap=Bitmap.createBitmap(800,230,Bitmap.Config.ARGB_8888);val canvas=Canvas(bitmap)
-   val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=Color.rgb(162,181,201);textSize=24f}
-   if(window==null){canvas.drawText("모델 · TQQQ · 버크셔 B",18f,90f,paint);canvas.drawText("비교 자료 갱신 대기",18f,145f,paint);return bitmap}
-   val left=86f;val top=18f;val width=704f;val height=190f
+  internal fun chart(window:PerformanceWindow?,dark:Boolean=true,compact:Boolean=false):Bitmap {
+   val bitmap=Bitmap.createBitmap(800,240,Bitmap.Config.ARGB_8888);val canvas=Canvas(bitmap)
+   val muted=if(dark)Color.rgb(165,174,194) else Color.rgb(104,112,134)
+   val grid=if(dark)Color.rgb(48,57,75) else Color.rgb(224,228,239)
+   val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=muted;textSize=24f}
+   if(window==null){canvas.drawText("비교 자료 갱신 대기",18f,120f,paint);return bitmap}
+   val labels=listOf(window.low,window.low+window.span/2,window.low+window.span)
+   val left=if(compact)8f else labels.maxOf{paint.measureText("%+.1f%%".format(it*100))}+18f
+   val top=18f;val right=790f;val height=204f
    fun y(v:Double)=top+height*(1-((v-window.low)/window.span).toFloat())
-   for(value in listOf(window.low,window.low+window.span/2,window.low+window.span)){
-    val yy=y(value);paint.color=Color.rgb(162,181,201);paint.textSize=22f;canvas.drawText("%+.1f%%".format(value*100),0f,yy+7f,paint)
-    paint.color=Color.rgb(48,65,83);paint.strokeWidth=1f;canvas.drawLine(left,yy,790f,yy,paint)
+   for(value in labels){
+    val yy=y(value)
+    if(!compact){paint.color=muted;canvas.drawText("%+.1f%%".format(value*100),0f,yy+7f,paint)}
+    paint.color=grid;paint.strokeWidth=1.5f;canvas.drawLine(left,yy,right,yy,paint)
    }
-   paint.color=Color.rgb(102,119,138);canvas.drawLine(left,y(0.0),790f,y(0.0),paint)
-   listOf("model" to Color.rgb(117,223,197),"tqqq" to Color.rgb(140,170,255),"brkb" to Color.rgb(229,187,112)).forEachIndexed{index,(key,color)->
-    val path=Path();window.points.forEachIndexed{i,p->val xx=left+width*i/(window.points.size-1);if(i==0)path.moveTo(xx,y(p.value(key))) else path.lineTo(xx,y(p.value(key)))}
-    val line=Paint(Paint.ANTI_ALIAS_FLAG).apply{this.color=color;strokeWidth=if(index==0)5f else 3.5f;style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND}
+   paint.color=muted;paint.alpha=100;canvas.drawLine(left,y(0.0),right,y(0.0),paint);paint.alpha=255
+   val colors=if(dark)listOf(Color.rgb(117,223,197),Color.rgb(154,173,255),Color.rgb(229,187,112)) else listOf(Color.rgb(20,126,104),Color.rgb(83,102,205),Color.rgb(149,105,38))
+   listOf("model","tqqq","brkb").forEachIndexed{index,key->
+    val path=Path();window.points.forEachIndexed{i,p->val xx=left+(right-left)*i/(window.points.size-1);if(i==0)path.moveTo(xx,y(p.value(key))) else path.lineTo(xx,y(p.value(key)))}
+    val line=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=colors[index];strokeWidth=if(index==0)5.5f else 3.5f;style=Paint.Style.STROKE;strokeJoin=Paint.Join.ROUND;strokeCap=Paint.Cap.ROUND}
     canvas.drawPath(path,line)
    }
    return bitmap
   }
  }
 }
+class WoogongCompactWidget:WoogongWidget()
+class WoogongDetailWidget:WoogongWidget()
