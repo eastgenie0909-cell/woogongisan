@@ -52,7 +52,7 @@ class MainActivity:ComponentActivity(){
   var back by remember{mutableStateOf(Data.load(this,"backtest"))};var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf("")};val scope=rememberCoroutineScope()
   fun refresh(){scope.launch{busy=true;error="";try{withContext(Dispatchers.IO){Data.sync(this@MainActivity)};snap=Data.load(this@MainActivity,"snapshot");status=Data.load(this@MainActivity,"status");back=Data.load(this@MainActivity,"backtest");WoogongWidget.updateAll(this@MainActivity)}catch(e:Exception){error=e.message?:"갱신 실패"}finally{busy=false}}}
   LaunchedEffect(Unit){if(Data.url(this@MainActivity).isNotBlank())refresh()}
-  val clockTick by produceState(0L){while(true){delay(1000);value++}}
+  val clockTick by produceState(0L){while(true){delay(1000);value=value+1}}
   LaunchedEffect(resumeTick){snap=Data.load(this@MainActivity,"snapshot");status=Data.load(this@MainActivity,"status");back=Data.load(this@MainActivity,"backtest");if(MeritzAccount.connected(this@MainActivity))try{withContext(Dispatchers.IO){MeritzAccount.sync(this@MainActivity)}}catch(_:Exception){}}
   val stale=remember(clockTick,snap,status,error){Data.stale(snap,status)||error.isNotEmpty()||Data.prefs(this@MainActivity).getString("sync_error","")!!.isNotEmpty()}
   val icons=listOf(Icons.Outlined.Home,Icons.Outlined.AccountBalanceWallet,Icons.Outlined.Lightbulb,Icons.Outlined.ShowChart,Icons.Outlined.Settings)

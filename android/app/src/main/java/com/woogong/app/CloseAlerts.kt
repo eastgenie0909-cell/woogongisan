@@ -32,22 +32,23 @@ internal object CloseAlerts {
   if(android.os.Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(c,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false
   return NotificationManagerCompat.from(c).areNotificationsEnabled()&&c.getSystemService(NotificationManager::class.java).getNotificationChannel("close")?.importance!=NotificationManager.IMPORTANCE_NONE
  }
- private fun post(c:Context,id:Int,title:String,body:String){
+ private fun post(c:Context,id:Int,title:String,body:String):Boolean {
+  if(android.os.Build.VERSION.SDK_INT>=33&&ContextCompat.checkSelfPermission(c,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false
   val intent=PendingIntent.getActivity(c,0,Intent(c,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
   val notification=NotificationCompat.Builder(c,"close").setSmallIcon(R.drawable.ic_notification).setContentTitle(title)
    .setContentText(body).setStyle(NotificationCompat.BigTextStyle().bigText(body)).setAutoCancel(true).setContentIntent(intent).build()
-  NotificationManagerCompat.from(c).notify(id,notification)
+  return try{NotificationManagerCompat.from(c).notify(id,notification);true}catch(_:SecurityException){false}
  }
  fun onSynced(c:Context,snapshot:JSONObject,health:JSONObject)=synchronized(lock){
   val identity=CloseAlertPolicy.identity(snapshot,health)
   if(!CloseAlertPolicy.shouldNotify(identity,Data.prefs(c).getString("close_alert_last",null),enabled(c),allowed(c)))return@synchronized
   // Only public model data goes into the notification. Account/key details stay private.
-  post(c,3661,"우공이산 · ${snapshot.optString("market_date")} 장 마감",snapshot.optString("state_label")+" · "+Data.allocation(snapshot))
+  if(!post(c,3661,"우공이산 · ${snapshot.optString("market_date")} 장 마감",snapshot.optString("state_label")+" · "+Data.allocation(snapshot)))return@synchronized
   check(Data.prefs(c).edit().putString("close_alert_last",identity).putString("close_alert_last_at",Instant.now().toString()).commit())
  }
  fun test(c:Context):Boolean {
   if(!allowed(c))return false
-  post(c,3662,"우공이산 · 알림 테스트","알림을 받을 수 있습니다. 새 장 마감 결과를 확인하면 이 기기에서 알려드립니다.")
-  return true  // Test does not consume the real model/date identity.
+  return post(c,3662,"우공이산 · 알림 테스트","알림을 받을 수 있습니다. 새 장 마감 결과를 확인하면 이 기기에서 알려드립니다.")
+  // Test does not consume the real model/date identity.
  }
 }

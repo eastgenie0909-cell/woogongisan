@@ -52,22 +52,22 @@ open class WoogongWidget:AppWidgetProvider(){
     v.setTextViewText(R.id.detail,"모델 목표  ${Data.allocation(s)}\n$gap")
    }
    val dark=c.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK==Configuration.UI_MODE_NIGHT_YES
-   v.setImageViewBitmap(R.id.chart,chart(window,dark,layout==WidgetPresentation.Layout.COMPACT))
+   v.setImageViewBitmap(R.id.chart,chart(window,dark,layout==WidgetPresentation.Layout.COMPACT,WidgetPresentation.chartPixels(width,height,layout)))
    val open=PendingIntent.getActivity(c,id,Intent(c,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
    v.setOnClickPendingIntent(R.id.widget_root,open)
    val cycle=Intent(PERIOD_ACTION).setComponent(info.provider).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id)
    v.setOnClickPendingIntent(R.id.period,PendingIntent.getBroadcast(c,id,cycle,PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
    m.updateAppWidget(id,v)
   }
-  internal fun chart(window:PerformanceWindow?,dark:Boolean=true,compact:Boolean=false):Bitmap {
-   val bitmap=Bitmap.createBitmap(800,240,Bitmap.Config.ARGB_8888);val canvas=Canvas(bitmap)
+  internal fun chart(window:PerformanceWindow?,dark:Boolean=true,compact:Boolean=false,pixelHeight:Int=240):Bitmap {
+   val bitmap=Bitmap.createBitmap(800,pixelHeight,Bitmap.Config.ARGB_8888);val canvas=Canvas(bitmap)
    val muted=if(dark)Color.rgb(165,174,194) else Color.rgb(104,112,134)
    val grid=if(dark)Color.rgb(48,57,75) else Color.rgb(224,228,239)
    val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply{color=muted;textSize=24f}
-   if(window==null){canvas.drawText("비교 자료 갱신 대기",18f,120f,paint);return bitmap}
+   if(window==null){canvas.drawText("비교 자료 갱신 대기",18f,pixelHeight/2f+paint.textSize/3,paint);return bitmap}
    val labels=listOf(window.low,window.low+window.span/2,window.low+window.span)
    val left=if(compact)8f else labels.maxOf{paint.measureText("%+.1f%%".format(it*100))}+18f
-   val top=18f;val right=790f;val height=204f
+   val top=14f;val right=790f;val height=(pixelHeight-28).toFloat()
    fun y(v:Double)=top+height*(1-((v-window.low)/window.span).toFloat())
    for(value in labels){
     val yy=y(value)

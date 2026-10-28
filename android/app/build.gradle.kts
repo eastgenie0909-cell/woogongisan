@@ -55,6 +55,9 @@ kotlin {
 }
 
 dependencies {
+    constraints {
+        implementation("androidx.fragment:fragment:1.8.9") { because("Upgrade the transitive Fragment for Activity Result compatibility") }
+    }
     // Deliberately pinned to the AGP 8.13 / compileSdk 36 compatibility line.
     val composeBom = platform("androidx.compose:compose-bom:2025.10.01")
     implementation(composeBom)
